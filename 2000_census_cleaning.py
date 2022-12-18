@@ -5,7 +5,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 
 # import 1999-2000 census demographics data
-demographics00_unclean = pd.read_csv('/Users/lacm/Documents/Stanford/*Capstone Research/Data/SY 1999-2000/Census Data/Raw/nhgis0028_ds147_2000_block.csv', header=0, low_memory=False)
+demographics00_unclean = pd.read_csv('/Users/lacm/Documents/Stanford/*Capstone Research/Data/SY 1999-2000/Census Data/Raw/nhgis0028_ds147_2000_block.csv', header=0)
 
 print('imported successfully!')
 
