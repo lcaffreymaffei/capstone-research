@@ -1,0 +1,2524 @@
+---
+title: "Post-Estimation Analysis"
+author: "Lucy Caffrey-Maffei"
+date: "2023-01-31"
+output: html_document
+---
+
+# SET UP
+
+```{r setup, include=FALSE}
+setwd("~/Documents/Stanford/*Capstone Research/Deliverables")
+
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(viridis)
+library(ggridges)
+library(sandwich)
+library(lmtest)
+library(GGally)
+library(gtsummary)
+library(car)
+library(sjPlot)
+library(sjmisc)
+library(sjlabelled)
+library(lme4) # multilevel models
+require(lmerTest) # prints p-values with lmer models
+library(mosaic) # standardizing variables
+library(stats)
+library(performance)
+```
+
+```{r}
+wide <- read_csv("Full Segregation Index.csv")
+
+wide <- wide |>
+  mutate(geoleaid = as.character(geoleaid),
+         geoleaid = if_else(str_length(geoleaid) == 6, paste0("0", geoleaid), geoleaid))
+
+wide_covars <- read_csv("Full Segregation Index with Covariates.csv")
+
+wide_covars <- wide_covars |>
+  mutate(geoleaid = as.character(geoleaid),
+         geoleaid = if_else(str_length(geoleaid) == 6, paste0("0", geoleaid), geoleaid))
+
+long <- read_csv('Full Segregation Index - Long.csv')
+
+long <- long |>
+  mutate(geoleaid = as.character(geoleaid),
+         geoleaid = if_else(str_length(geoleaid) == 6, paste0("0", geoleaid), geoleaid))
+
+long_covars <- read_csv('Full Segregation Index with Covariates - Long.csv')
+
+long_covars <- long_covars |>
+  mutate(geoleaid = as.character(geoleaid),
+         geoleaid = if_else(str_length(geoleaid) == 6, paste0("0", geoleaid), geoleaid))
+
+
+# full_segregation_index <- full_segregation_index |>
+#   mutate(across(starts_with('segregation_index'), round, 4))
+
+
+# seda_cov <- read_csv("~/Documents/Stanford/*Capstone Research/seda_cov_geodist_poolyr_4.1.csv")
+```
+
+# BAD/DESCRIPTIVE ANALYSIS
+
+## QUESTION 1: DESCRIPTIVE STATISTICS/DISTRIBUTION OF SEGREGATION PER YEAR
+
+```{r}
+# descriptive statistics
+full_segregation_index |>
+  select(segregation_index00,
+         segregation_index10,
+         segregation_index11,
+         segregation_index12,
+         segregation_index14,
+         segregation_index16) |>
+  summary()
+```
+
+```{r}
+# create new dataframe for visualization
+seg_longyear <- full_segregation_index |>
+  select(geoleaid, segregation_index00, segregation_index10, segregation_index11, segregation_index12, segregation_index14, segregation_index16) |>
+  pivot_longer(cols = c('segregation_index00', 
+                        'segregation_index10', 
+                        'segregation_index11', 
+                        'segregation_index12', 
+                        'segregation_index14', 
+                        'segregation_index16'),
+               names_to='year',
+               values_to='segregation_index') |>
+  mutate(year = str_replace(year, "sy", ''))
+```
+
+```{r}
+# visualize question
+ggplot(seg_longyear, 
+       aes(x=segregation_index,
+           y =year,
+           fill=year)) + 
+  geom_violin(alpha=0.6) +
+  theme_classic() +
+  scale_y_discrete(breaks=c('segregation_index00', 'segregation_index10', 'segregation_index11', 'segregation_index12', 'segregation_index14', 'segregation_index16'),
+                   labels=c('SY 1999-2000', 'SY 2009-10', 'SY 2010-11', 'SY 2011-12', 'SY 2013-14', 'SY 2015-16')) +
+  labs(title = "Distribution of School Districts' Inter-AZ Segregation Indices,\nSY 1999-2000 - SY 2015-16",
+      x = "Segregation Index",
+      y = "School Year") +
+  theme(axis.text.x = element_text(color = "gray20",
+                                   size = 13,
+                                   family = 'Times'),
+      plot.title = element_text(color = "gray20",
+                                size = 16,
+                                face='bold',
+                                hjust = 0.5,
+                                family = 'Times'),
+      axis.text.y = element_text(color = "gray20",
+                                 size = 13,
+                                 family = 'Times'),
+      axis.title.x = element_text(color = "gray20",
+                                  size = 14,
+                                  margin = margin(15),
+                                  family='Times'),
+      axis.title.y = element_text(color = "gray20",
+                                  size = 14,
+                                  margin = margin(r=15),
+                                  family='Times'),
+      legend.position = 'none')
+
+
+
+```
+
+```{r}
+{r}
+# characteristics of 1999-2000 schools vs. avg schools
+
+sy00 <- seg_index_covars |>
+  filter(!is.na(segregation_index00))
+
+# urban
+summary(sy00$urban)
+summary(seda_cov$urban)
+
+# white
+summary(sy00$perwht)
+summary(seda_cov$perwht)
+
+# black
+summary(sy00$perblk)
+summary(seda_cov$perblk)
+
+# hispanic
+summary(sy00$perhsp)
+summary(seda_cov$perhsp)
+
+# asian
+summary(sy00$perasn)
+summary(seda_cov$perasn)
+```
+
+## QUESTION 2: DIRECTIONAL TRENDS OF SEGREGATION OVER TIME
+
+```{r}
+# segregation trends in districts with full data
+nomiss <- seg_index_covars |>
+  select(sedaleaname,
+         segregation_index00,
+         segregation_index10,
+         segregation_index11,
+         segregation_index14,
+         segregation_index16) |>
+  filter((!is.na(segregation_index00)) &
+         (!is.na(segregation_index10)) &
+         (!is.na(segregation_index11)) &
+         (!is.na(segregation_index14)) &
+         (!is.na(segregation_index16))) |>
+  pivot_longer(cols = c('segregation_index00', 
+                        'segregation_index10', 
+                        'segregation_index11', 
+                        'segregation_index14', 
+                        'segregation_index16'),
+               names_to='year',
+               values_to='segregation_index') |>
+  mutate(year = str_replace(year, "sy", ''))
+
+# visualization
+ggplot(nomiss, 
+       aes(x=year,
+           y=segregation_index,
+           group=sedaleaname,
+           color=sedaleaname)) + 
+  geom_line(alpha=0.6)
+
+# +
+#   theme_classic() +
+#   scale_x_discrete(breaks=c('segregation_index00', 'segregation_index10', 'segregation_index11', 'segregation_index14', 'segregation_index16'),
+#                    labels=c('SY 1999-2000', 'SY 2009-10', 'SY 2010-11', 'SY 2013-14', 'SY 2015-16')) +
+#   labs(title = "Distribution of School Districts' Inter-AZ Segregation Indices,\nSY 1999-2000 - SY 2015-16",
+#       y = "Segregation Index",
+#       x = "School Year") +
+#   theme(axis.text.x = element_text(color = "gray20",
+#                                    size = 13,
+#                                    family = 'Times'),
+#       plot.title = element_text(color = "gray20",
+#                                 size = 16,
+#                                 face='bold',
+#                                 hjust = 0.5,
+#                                 family = 'Times'),
+#       axis.text.y = element_text(color = "gray20",
+#                                  size = 13,
+#                                  family = 'Times'),
+#       axis.title.x = element_text(color = "gray20",
+#                                   size = 14,
+#                                   margin = margin(15),
+#                                   family='Times'),
+#       axis.title.y = element_text(color = "gray20",
+#                                   size = 14,
+#                                   margin = margin(r=15),
+#                                   family='Times'),
+#       legend.position = 'none')
+
+```
+
+```{r}
+
+# need to figure out how to weight by state
+set.seed(123)
+
+random_sample <- wide_covars |>
+  select(sedaleaname,
+         fips,
+         segregation_index00, 
+         segregation_index10, 
+         segregation_index11,
+         segregation_index12,
+         segregation_index14,
+         segregation_index16) |>
+  mutate(in_00 = if_else(!is.na(segregation_index00), 1, 0),
+         in_10 = if_else(!is.na(segregation_index10), 1, 0),
+         in_11 = if_else(!is.na(segregation_index11), 1, 0),
+         in_12 = if_else(!is.na(segregation_index12), 1, 0),
+         in_14 = if_else(!is.na(segregation_index14), 1, 0),
+         in_16 = if_else(!is.na(segregation_index16), 1, 0),
+         weight = case_when(fips == 6 ~ 1/2,
+                            fips == 12 ~ 1/6,
+                            fips == 17 ~ 1/1,
+                            fips == 24 ~ 1/3,
+                            fips == 27 ~ 1/313,
+                            fips == 32 ~ 1/1,
+                            fips == 42 ~ 1/1,
+                            fips == 48 ~ 1/1,
+                            fips == 51 ~ 1/1),
+         across(starts_with('segregation_index'), round, 2)) |>
+  rowwise() |>
+  mutate(year_count = in_00 + in_10 + in_11 + in_12 + in_14 + in_16) |>
+  filter((year_count >= 5) & (!is.na(sedaleaname))) |>
+  ungroup() |>
+  slice_sample(n=20, weight_by = weight) |>
+  arrange(sedaleaname)
+```
+
+```{r}
+
+summary(full_segregation_index$net_change_segregation)
+```
+
+```{r}
+
+ggplot(full_segregation_index, 
+       aes(x=net_change_segregation)) + 
+  geom_histogram(alpha=0.6,
+                 fill='skyblue3') +
+  theme_classic() +
+  theme(axis.text.x = element_text(color = "gray20",
+                                   size = 13,
+                                   family = 'Times'),
+      plot.title = element_text(color = "gray20",
+                                size = 16,
+                                face='bold',
+                                hjust = 0.5,
+                                family = 'Times'),
+      axis.text.y = element_text(color = "gray20",
+                                 size = 13,
+                                 family = 'Times'),
+      axis.title.x = element_text(color = "gray20",
+                                  size = 14,
+                                  margin = margin(15),
+                                  family = 'Times'),
+      axis.title.y = element_text(color = "gray20",
+                                  size = 14,
+                                  margin = margin(r=15),
+                                  family = 'Times'),
+      legend.position = 'none') +
+  labs(title = "Net Change in School Districts' Inter-AZ Segregation Indices,\nSY 1999-2000 - SY 2015-16",
+      x = "Net Change in Segregation Index",
+      y = "School District Count") +
+  scale_y_continuous(breaks=c(1700, 3400, 5100, 6800, 8500, 10200),
+                     labels=c('1,700', '3,400', '5,100', '6,800', '8,500', '10,200'))
+```
+
+## QUESTION 3: SEGREGATION BY COURT-ORDER STATUS
+
+regression should hold constant the segregation value the year before release
+
+### 1999-2000
+
+```{r}
+# simple smmary statistics
+
+seg_index_covars |>
+  filter(!is.na(segregation_index00)) |>
+  group_by(disby2000) |>
+  summarize(minimum = min(segregation_index00),
+         median = median(segregation_index00),
+         maximum = max(segregation_index00),
+         mean = mean(segregation_index00)) 
+```
+
+```{r}
+lm_courtorder00 <- lm(segregation_index00 ~ disby2000 + pblack00 + pnative00 + pasian00 + phawaiianpacific00 + pother00 + pmultiracial00 + pwhite00 + phispaniclatino00 + urban + rural + suburb + town + region + ncases,
+                    data = seg_index_covars)
+
+summary(lm_courtorder00)
+#don't control for percent frl because multicollinear with ses
+# doesnt control for rural because multicollinear
+
+# get model with robust standard errors
+coeftest(lm_courtorder10, vcov = vcovHC(lm_courtorder00, type="HC3"))
+
+r1 <- coeftest(lm_courtorder00, vcov = vcovHC(lm_courtorder00, type="HC3"), save = TRUE)
+```
+
+### 2009-2010
+
+```{r}
+# simple smmary statistics
+
+seg_index_covars |>
+  filter(!is.na(segregation_index10)) |>
+  group_by(disby2010) |>
+  summarize(minimum = min(segregation_index10),
+         median = median(segregation_index10),
+         maximum = max(segregation_index10),
+         mean = mean(segregation_index10)) 
+```
+
+```{r}
+# model_comparison <- seg_index_covars |>
+#   filter((!is.na(segregation_index10)) &
+#            (!is.na(disby2010)) &
+#            (!is.na(pblack10)) &
+#            (!is.na(pnative10)) &
+#            (!is.na(pasian10)) &
+#            (!is.na(phawaiianpacific10)) &
+#            (!is.na(pother10)) &
+#            (!is.na(pmultiracial10)) &
+#            (!is.na(pwhite10)) &
+#            (!is.na(phispaniclatino10)) &
+#            (!is.na(urban)) &
+#            (!is.na(suburb)) &
+#            (!is.na(town)) &
+#            (!is.na(rural)) &
+#            (!is.na(fips)) &
+#            (!is.na(perfrl)) &
+#            (!is.na(perecd)) &
+#            (!is.na(perell)) &
+#            (!is.na(totenrl)) &
+#            (!is.na(sesavgall)))
+```
+
+```{r}
+# check for multicollinearity
+X <- seg_index_covars |>
+  select(disby2010, pblack10, pnative10, pasian10, phawaiianpacific10, pother10, pmultiracial10, pwhite10, phispaniclatino10, urban, suburb, town, rural, perfrl, perell, totenrl,sesavgall)
+
+ggpairs(X)
+```
+
+```{r}
+# first model for comparison
+# lm_courtorder10_1 <- lm(segregation_index10 ~ disby2010 + pblack10 + pnative10 + pasian10 + phawaiianpacific10 + pother10 + pmultiracial10 + pwhite10 + phispaniclatino10, 
+#                     data = model_comparison)
+# 
+# 
+# # get model with robust standard errors
+# lm_courtorder10_1_robust <- coeftest(lm_courtorder10_1, vcov = vcovHC(lm_courtorder10, type="HC1"), save = TRUE)
+```
+
+```{r}
+# second model for comparison
+# lm_courtorder10_2 <- lm(segregation_index10 ~ disby2010 + pblack10 + pnative10 + pasian10 + phawaiianpacific10 + pother10 + pmultiracial10 + pwhite10 + phispaniclatino10 + urban + suburb + rural + town, 
+#                     data = model_comparison)
+# 
+# 
+# # get model with robust standard errors
+# lm_courtorder10_1_robust <- coeftest(lm_courtorder10_1, vcov = vcovHC(lm_courtorder10, type="HC1"), save = TRUE)
+```
+
+```{r}
+# third model for comparison
+# lm_courtorder10_3 <- lm(segregation_index10 ~ disby2010 + pblack10 + pnative10 + pasian10 + phawaiianpacific10 + pother10 + pmultiracial10 + pwhite10 + phispaniclatino10 + urban + suburb + town + rural + as.factor(fips), 
+#                     data = model_comparison)
+# 
+# summary(lm_courtorder10)
+# 
+# # get model with robust standard errors
+# coeftest(lm_courtorder10, vcov = vcovHC(lm_courtorder10, type="HC1"))
+# 
+# lm_courtorder10_robust <- coeftest(lm_courtorder10, vcov = vcovHC(lm_courtorder10, type="HC1"), save = TRUE)
+```
+
+```{r}
+# final model
+lm_courtorder10 <- lm(segregation_index10 ~ disby2010 + pblack10 + pnative10 + pasian10 + phawaiianpacific10 + pother10 + pmultiracial10 + pwhite10 + phispaniclatino10 + urban + suburb + town + as.factor(fips) + perecd + perell + totenrl + sesavgall, 
+                    data = seg_index_covars)
+
+#don't control for percent frl because multicollinear with ses / doesn't control for rural bc supposedly perfect multicollinearity
+
+summary(lm_courtorder10)
+
+
+# get model with robust standard errors
+coeftest(lm_courtorder10, vcov = vcovHC(lm_courtorder10, type="HC1"))
+
+r2 <- coeftest(lm_courtorder10, vcov = vcovHC(lm_courtorder10, type="HC1"), save = TRUE)
+```
+
+```{r}
+# compare models
+anova(lm_courtorder10, lm_courtorder10_3)
+
+# get vifs
+vif(lm_courtorder10_3)
+```
+
+### 2010-11
+
+```{r}
+# simple summary statistics
+
+seg_index_covars |>
+  filter(!is.na(segregation_index11)) |>
+  group_by(disby2011) |>
+  summarize(minimum = min(segregation_index11),
+         median = median(segregation_index11),
+         maximum = max(segregation_index11),
+         mean = mean(segregation_index11)) 
+```
+
+```{r}
+# check for multicollinearity
+X <- seg_index_covars |>
+  select(disby2011, pblack11, pnative11, pasian11, phawaiianpacific11, pother11, pmultiracial11, pwhite11, phispaniclatino11, urban, suburb, town, rural, fips)
+
+ggpairs(X)
+```
+
+```{r}
+# 2010-11
+lm_courtorder11 <- lm(segregation_index11 ~ disby2011 + segregation_index10 + pblack11 + pnative11 + pasian11 + phawaiianpacific11 + pother11 + pmultiracial11 + pwhite11 + phispaniclatino11 + urban + suburb + town + as.factor(fips) + perecd + perell + totenrl + sesavgall, 
+                    data = seg_index_covars)
+
+#don't control for percent frl because multicollinear with ses / doesn't control for rural bc supposedly perfect multicollinearity
+
+summary(lm_courtorder11)
+
+
+# get model with robust standard errors
+coeftest(lm_courtorder11, vcov = vcovHC(lm_courtorder11, type="HC1"))
+
+r3 <- coeftest(lm_courtorder11, vcov = vcovHC(lm_courtorder11, type="HC1"), save = TRUE)
+```
+
+### 2011-12
+
+```{r}
+# simple summary statistics
+seg_index_covars |>
+  filter(!is.na(segregation_index12)) |>
+  group_by(disby2012) |>
+  summarize(minimum = min(segregation_index12),
+         median = median(segregation_index12),
+         maximum = max(segregation_index12),
+         mean = mean(segregation_index12))
+```
+
+regressions don't work because singularity in court order status
+
+```{r}
+# check for multicollinearity
+# X <- seg_index_covars |>
+#   select(disby2012, pblack12, pnative12, pasian12, phawaiianpacific12, pother12, pmultiracial12, pwhite12, phispaniclatino12, urban, suburb, town, rural, fips)
+# 
+# ggpairs(X)
+```
+
+```{r}
+# DOESN'T WORK BECAUSE ONE OF THE PREDICTORS ONLY HAS 1 UNIQUE VALUE
+# 2011-12
+# lm_courtorder12 <- lm(segregation_index12 ~ disby2012 + pblack12 + pnative12 + pasian12 + phawaiianpacific12 + pother12 + pmultiracial12 + pwhite12 + phispaniclatino12 + urban + suburb + town + rural + as.factor(fips), 
+#                     data = seg_index_covars)
+# 
+# summary(lm_courtorder)
+# 
+# # get model with robust standard errors
+# lm_courtorder12_robust <- coeftest(lm_courtorder12, vcov = vcovHC(lm_courtorder12, type="HC1"), save = TRUE)
+```
+
+### 2013-14
+
+```{r}
+# simple summary statistics
+seg_index_covars |>
+  filter(!is.na(segregation_index14)) |>
+  group_by(disby2014) |>
+  summarize(minimum = min(segregation_index14),
+         median = median(segregation_index14),
+         maximum = max(segregation_index14),
+         mean = mean(segregation_index14)) 
+```
+
+```{r}
+# check for multicollinearity
+X <- seg_index_covars |>
+  select(disby2014, pblack14, pnative14, pasian14, phawaiianpacific14, pother14, pmultiracial14, pwhite14, phispaniclatino14, urban, suburb, town, rural, fips)
+
+ggpairs(X)
+```
+
+```{r}
+# 2013-14
+lm_courtorder14 <- lm(segregation_index14 ~ disby2014 + segregation_index11 + pblack14 + pnative14 + pasian14 + phawaiianpacific14 + pother14 + pmultiracial14 + pwhite14 + phispaniclatino14 + urban + suburb + town + as.factor(fips) + perecd + perell + totenrl + sesavgall, 
+                    data = seg_index_covars)
+
+
+summary(lm_courtorder14)
+
+# get model with robust standard errors
+coeftest(lm_courtorder14, vcov = vcovHC(lm_courtorder14, type="HC1"), save = TRUE)
+
+r4 <- coeftest(lm_courtorder14, vcov = vcovHC(lm_courtorder14, type="HC1"), save = TRUE)
+```
+
+### 2015-16
+
+```{r}
+# simple summary statistics
+seg_index_covars |>
+  filter(!is.na(segregation_index16)) |>
+  group_by(disby2016) |>
+  summarize(minimum = min(segregation_index16),
+         median = median(segregation_index16),
+         maximum = max(segregation_index16),
+         mean = mean(segregation_index16)) 
+```
+
+```{r}
+# check for multicollinearity
+X <- seg_index_covars |>
+  select(disby2016, pblack16, pnative16, pasian16, phawaiianpacific16, pother16, pmultiracial16, pwhite16, phispaniclatino16, urban, suburb, town, rural, fips)
+
+ggpairs(X)
+```
+
+```{r}
+# 2015-16
+lm_courtorder16 <- lm(segregation_index16 ~ disby2016 + segregation_index14 + pblack16 + pnative16 + pasian16 + phawaiianpacific16 + pother16 + pmultiracial16 + pwhite16 + phispaniclatino16 + urban + suburb + town + as.factor(fips) + perecd + perell + totenrl + sesavgall, 
+                    data = seg_index_covars)
+
+summary(lm_courtorder16)
+
+# get model with robust standard errors
+coeftest(lm_courtorder16, vcov = vcovHC(lm_courtorder16, type="HC1"), save = TRUE)
+
+r5 <- coeftest(lm_courtorder16, vcov = vcovHC(lm_courtorder16, type="HC1"), save = TRUE)
+```
+
+### Segregation by Court Order Status by Year
+
+```{r}
+seg_courtorder <- wide_covars |>
+  select(geoleaid, disby2000, disby2010, disby2011, disby2012, disby2014, disby2016, segregation_index00, segregation_index10, segregation_index11, segregation_index12, segregation_index14, segregation_index16) |>
+  pivot_longer(cols = c('segregation_index00', 
+                        'segregation_index10', 
+                        'segregation_index11', 
+                        'segregation_index12', 
+                        'segregation_index14', 
+                        'segregation_index16'),
+               names_to='year',
+               values_to='segregation_index') |>
+  mutate(year = str_replace(year, "sy", '')) |>
+  rowwise()|>
+  mutate(order_status = case_when(year == 'segregation_index00' ~ disby2000,
+                                  year == 'segregation_index10' ~ disby2010,
+                                  year == 'segregation_index11' ~ disby2011,
+                                  year == 'segregation_index12' ~ disby2012,
+                                  year == 'segregation_index14' ~ disby2014,
+                                  year == 'segregation_index16' ~ disby2016)) |>
+  filter(!is.na(segregation_index)) |>
+  group_by(year, order_status) |>
+  summarize(segregation_mean = mean(segregation_index),
+            segregation_median = median(segregation_index))
+
+ggplot(seg_courtorder) + 
+  geom_bar(alpha=0.6,
+           stat='identity',
+           width=0.7,
+           position=position_dodge(.7),
+           aes(y=segregation_mean,
+           x=year,
+           group=order_status,
+           fill=order_status)) +
+  theme_classic() +
+  scale_x_discrete(breaks=c('segregation_index00', 'segregation_index10', 'segregation_index11', 'segregation_index12', 'segregation_index14', 'segregation_index16'),
+                   labels=c('1999-2000', '2009-10', '2010-11', '2011-12', '2013-14', '2015-16')) +
+  labs(title = "District's Mean Inter-AZ Segregation Scores\nby Desegregation Court Order Status, SY 1999-2000 - SY 2015-16",
+      y = "Mean Segregation Score",
+      x = "School Year") +
+  theme(axis.text.x = element_text(color = "gray20",
+                                   size = 13,
+                                   family = 'Times'),
+      plot.title = element_text(color = "gray20",
+                                size = 16,
+                                face='bold',
+                                hjust = 0.5,
+                                family = 'Times'),
+      axis.text.y = element_text(color = "gray20",
+                                 size = 13,
+                                 family = 'Times'),
+      axis.title.x = element_text(color = "gray20",
+                                  size = 14,
+                                  family='Times'),
+      axis.title.y = element_text(color = "gray20",
+                                  size = 14,
+                                  family='Times'))
+
+```
+
+```{r}
+seg_courtorder <- seg_index_covars |>
+  select(geoleaid, disby2000, disby2010, disby2011, disby2012, disby2014, disby2016, segregation_index00, segregation_index10, segregation_index11, segregation_index12, segregation_index14, segregation_index16) |>
+  pivot_longer(cols = c('segregation_index00', 
+                        'segregation_index10', 
+                        'segregation_index11', 
+                        'segregation_index12', 
+                        'segregation_index14', 
+                        'segregation_index16'),
+               names_to='year',
+               values_to='segregation_index') |>
+  mutate(year = str_replace(year, "sy", '')) |>
+  rowwise()|>
+  mutate(order_status = case_when(year == 'segregation_index00' ~ disby2000,
+                                  year == 'segregation_index10' ~ disby2010,
+                                  year == 'segregation_index11' ~ disby2011,
+                                  year == 'segregation_index12' ~ disby2012,
+                                  year == 'segregation_index14' ~ disby2014,
+                                  year == 'segregation_index16' ~ disby2016)) |>
+  filter(!is.na(segregation_index))
+
+```
+
+```{r}
+ggplot(seg_courtorder,
+       aes(x=year,
+           y=segregation_index,
+           color=order_status)) +
+  geom_boxplot(alpha=0.6) +
+  theme_classic() +
+  scale_x_discrete(breaks=c('segregation_index00', 'segregation_index10', 'segregation_index11', 'segregation_index12', 'segregation_index14', 'segregation_index16'),
+                   labels=c('1999-2000', '2009-10', '2010-11', '2011-12', '2013-14', '2015-16')) +
+  labs(title = "Districts' Inter-AZ Segregation Scores\nby Status of Court-Ordered Desegregation Plans, SY 1999-2000 - SY 2015-16",
+      y = "Segregation Score",
+      x = "School Year") +
+  theme(axis.text.x = element_text(color = "gray20",
+                                   size = 13,
+                                   family = 'Times'),
+      plot.title = element_text(color = "gray20",
+                                size = 16,
+                                face='bold',
+                                hjust = 0.5,
+                                family = 'Times'),
+      axis.text.y = element_text(color = "gray20",
+                                 size = 13,
+                                 family = 'Times'),
+      axis.title.x = element_text(color = "gray20",
+                                  size = 14,
+                                  family='Times'),
+      axis.title.y = element_text(color = "gray20",
+                                  size = 14,
+                                  family='Times'),
+      legend.title = element_text(color = "gray20",
+                                   size = 13,
+                                   family = 'Times'),
+      legend.text = element_text(color = "gray20",
+                                   size = 12,
+                                   family = 'Times'),
+      legend.position = 'top') +
+  scale_color_discrete(name = "Court Order Status:", labels = c("Never Under Plan", "Released From Plan", "Under Plan"))
+```
+
+### Print regression table with all years
+
+```{r}
+tab_model(lm_courtorder16)
+```
+
+### Districts with \> 1 AZ
+
+```{r}
+
+az_count <- wide_covars |> 
+  select(geoleaid, 
+         starts_with('n_'),
+         starts_with('pblack'),
+         starts_with('pnative'),
+         starts_with('pasian'),
+         starts_with('phawaiianpacific'),
+         starts_with('pother'),
+         starts_with('pmultiracial'),
+         starts_with('pwhite'),
+         starts_with('phispaniclatino'),
+         urban,
+         town,
+         rural,
+         suburb) |>
+  mutate(n_years_represented = 0,
+         n_years_represented = if_else(!is.na(n_attendancezones00), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones10), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones11), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones12), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones14), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones16), n_years_represented + 1, n_years_represented),
+         n_years_1az = 0,
+         n_years_1az = if_else(!is.na(n_attendancezones00) & n_attendancezones00 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones10) & n_attendancezones10 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones11) & n_attendancezones11 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones12) & n_attendancezones12 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones14) & n_attendancezones14 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones16) & n_attendancezones16 == 1, n_years_1az + 1, n_years_1az)) |>
+  mutate(n_az = '1',
+         n_az = if_else(n_years_1az == 0 | (n_years_1az / n_years_represented <= 0.5), '> 1', n_az)) |>
+  rowwise() |>
+  mutate(black = mean(c(pblack00, pblack10, pblack11, pblack12, pblack14, pblack16), na.rm=T),
+         white = mean(c(pwhite00, pwhite10, pwhite11, pwhite12, pwhite14, pwhite16), na.rm=T),
+         native = mean(c(pnative00, pnative10, pnative11, pnative12, pnative14, pnative16), na.rm=T),
+         asian = mean(c(pasian00, pasian10, pasian11, pasian12, pasian14, pasian16), na.rm=T),
+         hawaiianpacific = mean(c(phawaiianpacific00, phawaiianpacific10, phawaiianpacific11, phawaiianpacific12, phawaiianpacific14, phawaiianpacific16), na.rm=T),
+         other = mean(c(pother00, pother10, pother11, pother12, pother14, pother16), na.rm=T),
+         multiracial = mean(c(pmultiracial00, pmultiracial10, pmultiracial11, pmultiracial12, pmultiracial14, pmultiracial16), na.rm=T),
+         hispaniclatino = mean(c(phispaniclatino00, phispaniclatino10, phispaniclatino11, phispaniclatino12, phispaniclatino14, phispaniclatino16), na.rm=T)) |>
+  group_by(n_az) |>
+  summarize(black = mean(black, na.rm=T),
+            white = mean(white, na.rm=T),
+            other = mean(other, na.rm=T),
+            native = mean(native, na.rm=T),
+            asian = mean(asian, na.rm=T),
+            hawaiianpacific = mean(hawaiianpacific, na.rm=T),
+            multiracial = mean(multiracial, na.rm=T),
+            hispaniclatino = mean(hispaniclatino, na.rm=T),
+            suburb = (mean(suburb, na.rm=T)),
+            urban = (mean(urban, na.rm=T)),
+            rural = (mean(rural, na.rm=T)),
+            town = (mean(town, na.rm=T))) |>
+  pivot_longer(cols = -n_az,
+               names_to = 'item',
+               values_to = 'value') |>
+  ungroup() |>
+  mutate(value = value * 100,
+         item = if_else(item == 'black', 'Black or African-American', item),
+         item = if_else(item == 'white', 'White (non-Hispanic or Latino)', item),
+         item = if_else(item == 'native', 'American Indian or Alaskan Native', item),
+         item = if_else(item == 'asian', 'Asian', item),
+         item = if_else(item == 'hawaiianpacific', 'Native Hawaiian or Other Pacific Islander', item),
+         item = if_else(item == 'multiracial', 'Multiracial', item),
+         item = if_else(item == 'other', 'Other Race', item),
+         item = if_else(item == 'hispaniclatino', 'Hispanic or Latino', item),
+         item = if_else(item == 'urban', 'Urban', item),
+         item = if_else(item == 'suburb', 'Suburban', item),
+         item = if_else(item == 'rural', 'Rural', item),
+         item = if_else(item == 'town', 'Town', item)) 
+  
+  
+```
+
+```{r}
+ggplot(az_count, 
+           aes(x = factor(item, level=c("Other Race", "Multiracial", "Native Hawaiian or Other Pacific Islander", "American Indian or Alaskan Native", "Asian", "Hispanic or Latino", "Black or African-American", "White (non-Hispanic or Latino)", "Rural", "Town", "Suburban", "Urban")),
+               y = value,
+               fill = n_az)) +
+  geom_bar(stat='identity', position = 'dodge') +  
+  coord_flip() +
+  theme_minimal() +
+  theme(text = element_text(family = "Times New Roman"),
+        plot.title = element_text(hjust = 0.5, face = 'bold', size = 24),
+        legend.title = element_text(hjust = 0.5, size = 12),
+        legend.text = element_text(hjust = 0.5, size = 12),
+        axis.title = element_text(hjust = 0.5, size = 14),
+        axis.text = element_text(hjust = 0.5, size = 12),
+        axis.title.y = element_text(vjust=-3)) +
+  scale_fill_brewer(palette = 'Pastel2') +
+  labs(title = 'District Demographics by District Attendance Zone Count,\nSY 1999-2000 - SY 2015-2016\n',
+       fill = 'AZ Count',
+       x='',
+       y = 'Percent of District') +
+  ylim(0, 100)
+```
+
+```{r}
+# count percent of districts that have 1 attendance zone vs. > 1
+
+# 1999-2000
+az_counts00 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones00 == 1 ~ 'one',
+                             n_attendancezones00 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# 2009-2010
+az_counts10 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones10 == 1 ~ 'one',
+                             n_attendancezones10 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# 2010-2011
+az_counts11 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones11 == 1 ~ 'one',
+                             n_attendancezones11 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# 2011-2012
+az_counts12 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones12 == 1 ~ 'one',
+                             n_attendancezones12 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# 2013-2014
+az_counts14 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones14 == 1 ~ 'one',
+                             n_attendancezones14 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# 2015-2016
+az_counts16 <- wide |> 
+  mutate(azcount = case_when(n_attendancezones16 == 1 ~ 'one',
+                             n_attendancezones16 > 1 ~ '> 1')) |>
+  filter(!is.na(azcount)) |>
+  count(azcount) |>
+  mutate(percent = n/sum(n))
+
+# total number of districts across all years with > 1 attendance zone
+length(districts_morethan1az) # = 4,213
+nrow(wide) # = 12,476 districts in the sample over years
+length(districts_morethan1az) / nrow(wide) * 100 
+```
+
+```{r}
+# print qgis filter to get all the districts with > 1 attendance zone
+filter <- c()
+for (i in 1:length(districts_morethan1az)) {
+  filter <- paste0("GEOID = '", districts_morethan1az, collapse="' OR ")
+  # filter <- append(filter, filter_i)
+}
+
+```
+
+### Single-Race Districts
+
+```{r}
+single_race <- wide |>
+  select(geoleaid,
+         starts_with('n_'),
+         starts_with('pblack'),
+         starts_with('pwhite'),
+         starts_with('pasian'),
+         starts_with('phispaniclatino'),
+         starts_with('pother'),
+         starts_with('pmultiracial'),
+         starts_with('pnative'),
+         starts_with('phawaiianpacific')) |>
+  mutate(n_years_represented = 0,
+         n_years_represented = if_else(!is.na(n_attendancezones00), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones10), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones11), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones12), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones14), n_years_represented + 1, n_years_represented),
+         n_years_represented = if_else(!is.na(n_attendancezones16), n_years_represented + 1, n_years_represented),
+         n_years_1az = 0,
+         n_years_1az = if_else(!is.na(n_attendancezones00) & n_attendancezones00 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones10) & n_attendancezones10 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones11) & n_attendancezones11 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones12) & n_attendancezones12 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones14) & n_attendancezones14 == 1, n_years_1az + 1, n_years_1az),
+         n_years_1az = if_else(!is.na(n_attendancezones16) & n_attendancezones16 == 1, n_years_1az + 1, n_years_1az)) |>
+  mutate(n_az = '1',
+         n_az = if_else(n_years_1az == 0 | (n_years_1az / n_years_represented <= 0.5), '> 1', n_az)) |>
+  select(-starts_with('n_attendancezones'),
+         -n_years_1az) |>
+  pivot_longer(cols = -c('geoleaid', 'n_az', 'n_years_represented'),
+               names_to = 'race',
+               values_to = 'proportion') |>
+  filter(proportion == 1) |>
+  mutate(year = if_else(str_detect(race, '16'), '2016', NA),
+         year = if_else(str_detect(race, '14'), '2014', year),
+         year = if_else(str_detect(race, '12'), '2012', year),
+         year = if_else(str_detect(race, '11'), '2011', year),
+         year = if_else(str_detect(race, '10'), '2010', year),
+         race = str_remove_all(race, '16'),
+         race = str_remove_all(race, '14'),
+         race = str_remove_all(race, '12'),
+         race = str_remove_all(race, '11'),
+         race = str_remove_all(race, '10'),
+         race = str_remove(race, 'p')) |>
+  arrange(geoleaid, year) |>
+  filter(geoleaid != '0200130' & geoleaid !='0401080' & geoleaid !='0604890' & geoleaid !='0607840') 
+
+single_race <- single_race[!duplicated(single_race$geoleaid), ]
+
+single_race <- single_race |>
+  group_by(n_az, race) |>
+  summarize(count = sum(proportion))
+
+
+
+```
+
+```{r}
+test <- single_race |>
+  mutate(race = paste0(race, year)) |>
+  select(-n_years_represented, -n_az, -year) |>
+  pivot_wider(names_from = race, values_from = proportion) |>
+  rowwise() |>
+  mutate(n_singlerace = sum(c(white2014, white2016, white2011, native2014, native2016, native2011, hispaniclatino2011, native2014, hispaniclatino2016, hispaniclatino2014, white2010, black2014, multiracial2016, white2012, black2010, black2011, black2016), na.rm=T)) |>
+  filter(n_singlerace > 1) |>
+  select(geoleaid, n_singlerace, starts_with('white'), starts_with('black'), starts_with('native'), starts_with('hispaniclatino')) |>
+  filter(geoleaid != '0200130' & geoleaid !='0401080' & geoleaid !='0604890' & geoleaid !='0607840')
+```
+
+\_\_\_\_
+
+# ANALYSIS
+
+## H1 (Overall, American public school districts' attendance zones have become more racially/ethnically segregated from each other since the turn of the 20th century) & H2 (H2: School districts under court-ordered desegregation plans have relatively lower racial/ethnic segregation than districts who have been released from or never had court-ordered desegregation plans)
+
+### Notes
+
+-   multilevel good for this one because can explicitly test the above question in one model because times periods are nested within districts (and maybe districts are also nested within states).
+
+    -   court order would be at the time level because it is time varying.
+
+    -   anything that is district-level (non-time varying because that would be at the time level) would be at the district level
+
+    -   this allows us to test a time-level hypothesis
+
+-   doesn't matter that some districts don't have data for all the time points
+
+-   advantages: don't have to do multiple models and can test first hypothesis explicitly
+
+-   dataframe should be long by year
+
+-   predict each segregation level by time point
+
+    -   outcome = segregation
+
+    -   regressors = time (e.g., 2000, 2010, 2011)(either linear or dummy) let's suppose dummies --\> 1999-2000 would be reference group
+
+        -   either:
+
+            -   segregation \~ alpha + as.factor(time) OR
+
+            -   make time into a dummy variable before and specify each dummy variable as regressor
+
+-   have random and fixed parts of the model:
+
+    -   in output it wills say that there is a random part and it will be called district\\n error
+
+        -   random part is everything you don't have covariates (unobservables)
+
+            -   call it random because we assume it's all random stuff and has a random error
+
+        -   then you'll have a fixed part (stuff that we observe and specify in the model)
+
+            -   time is fixed for this because we specify it
+
+            -   focus mostly on the fixed part.
+
+-   you have an error term at each level, whcih tells you where the unobserved variance is
+
+    -   if SE is higher for one level than another, you know that there are more unobserved variables at that level that are biasing the estimates and should be specified in the model.
+
+    -   this allows you to cluster standard errors (e.g. time points in a district are more similar than time points outside the district).
+
+        -   you need to specify what the cluster is
+
+### Summary Statistics
+
+```{r}
+# summary statistics
+
+district_count <- long_covars |>
+  mutate(count = 1) |>
+  group_by(geoleaid) |>
+  summarize(count = sum(count))
+
+
+sum_stats <- long_covars |>
+  select(geoleaid, year, pblack, pnative, pasian, phawaiianpacific, pother, pmultiracial, pwhite, phispaniclatino, n_attendancezones, urban, suburb, town, perecd, perell, totenrl, sesavgall, segregation_index) |>
+  mutate(pblack = scale(pblack),
+         pnative = scale(pnative),
+         pasian = scale(pasian),
+         phawaiianpacific = scale(phawaiianpacific),
+         pother = scale(pother),
+         pmultiracial = scale(pmultiracial),
+         pwhite = scale(pwhite),
+         phispaniclatino = scale(phispaniclatino),
+         n_attendancezones = scale(n_attendancezones),
+         urban = scale(urban),
+         suburb = scale(suburb),
+         town = scale(town),
+         perecd = scale(perecd),
+         perell = scale(perell),
+         totenrl = scale(totenrl),
+         sesavgall = scale(sesavgall)) |>
+  group_by(geoleaid) |>
+  summarize(pblack = sum(pblack),
+            pnative = sum(pnative),
+            pasian = sum(pasian),
+            phawaiianpacific = sum(phawaiianpacific),
+            pother = sum(pother),
+            pmultiracial = sum(pmultiracial),
+            pwhite = sum(pwhite),
+            phispaniclatino = sum(phispaniclatino),
+            n_attendancezones = sum(n_attendancezones),
+            urban = sum(urban),
+            suburb = sum(suburb),
+            town = sum(town),
+            perecd = sum(perecd),
+            perell = sum(perell),
+            totenrl = sum(totenrl),
+            sesavgall = sum(sesavgall),
+            segregation_index = sum(segregation_index)) |>
+  left_join(district_count, by='geoleaid') |>
+  rowwise() |>
+  mutate(pblack = pblack/count,
+         pnative = pnative/count,
+         pasian = pasian/count,
+         phawaiianpacific = phawaiianpacific/count,
+         pother = pother/count,
+         pmultiracial = pmultiracial/count,
+         pwhite = pwhite/count,
+         phispaniclatino = phispaniclatino/count,
+         n_attendancezones = n_attendancezones/count,
+         urban = urban/count,
+         suburb = suburb/count,
+         town = town/count,
+         perecd = perecd/count,
+         perell = perell/count,
+         totenrl = totenrl/count,
+         sesavgall = sesavgall/count,
+         segregation_index = segregation_index/count)
+
+
+court_sum_stats <- wide_covars |>
+  select(geoleaid, court_ordered)
+```
+
+### Clean Dataset for MLM
+
+```{r}
+# yoy_changes <- wide_covars |> 
+#   select(geoleaid, 
+#          starts_with('segregation_index'),
+#          starts_with('district_census_count_total')) |>
+#   mutate(
+#     # SY 1999-2000 to SY 2009-10
+#     change00to10 = abs((segregation_index10 - segregation_index00) / segregation_index00),
+#          popchange00to10 = abs((district_census_count_total10 - district_census_count_total00) / district_census_count_total00),
+#     
+#     # SY 2009-10 to SY 2010-11
+#          change10to11 = case_when(!is.na(segregation_index10) ~ abs((segregation_index11 - segregation_index10) / segregation_index10),
+#                                   is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((segregation_index11 - segregation_index00) / segregation_index00)),
+#     
+#     popchange10to11 = case_when(!is.na(segregation_index10) ~ abs((district_census_count_total11 - district_census_count_total10) / district_census_count_total10),
+#                                   is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((district_census_count_total11 - district_census_count_total00) / district_census_count_total00)),
+#     
+#     
+#    # SY 2010-11 - SY 2011-12
+#    
+#    change11to12 = case_when(!is.na(segregation_index11) ~ abs((segregation_index12 - segregation_index11) / segregation_index11),
+#                             is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((segregation_index12 - segregation_index10) / segregation_index10),
+#                             is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((segregation_index12 - segregation_index00) / segregation_index00)),
+#     
+#     popchange11to12 = case_when(!is.na(segregation_index11) ~ abs((district_census_count_total12 - district_census_count_total11) / district_census_count_total11),
+#                                   is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((district_census_count_total12 - district_census_count_total10) / district_census_count_total10),
+#                                 is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((district_census_count_total12 - district_census_count_total00) / district_census_count_total00)),
+#    
+#    
+#     # SY 2011-12 to SY 2013-14
+#    
+#    change12to14 = case_when(!is.na(segregation_index12) ~ abs((segregation_index14 - segregation_index12) / segregation_index12),
+#                             is.na(segregation_index12) & !is.na(segregation_index11) ~ abs((segregation_index14 - segregation_index11) / segregation_index11),
+#                             is.na(segregation_index12) & is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((segregation_index14 - segregation_index10) / segregation_index10),
+#                             is.na(segregation_index12) & is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((segregation_index14 - segregation_index00) / segregation_index00)),
+#     
+#     popchange12to14 = case_when(!is.na(segregation_index12) ~ abs((district_census_count_total14 - district_census_count_total12) / district_census_count_total12),
+#                                 is.na(segregation_index12) & !is.na(segregation_index11) ~ abs((district_census_count_total14 - district_census_count_total11) / district_census_count_total11),
+#                                   is.na(segregation_index12) & is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((district_census_count_total14 - district_census_count_total10) / district_census_count_total10),
+#                                 is.na(segregation_index12) & is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((district_census_count_total14 - district_census_count_total00) / district_census_count_total00)),
+#    
+#     
+#     # SY 2013-14 to SY 2015-16
+#    
+#    change14to16 = case_when(!is.na(segregation_index14) ~ abs((segregation_index16 - segregation_index14) / segregation_index14),
+#                             is.na(segregation_index14) & !is.na(segregation_index12) ~ abs((segregation_index16 - segregation_index12) / segregation_index12),
+#                             is.na(segregation_index14) & is.na(segregation_index12) & !is.na(segregation_index11) ~ abs((segregation_index16 - segregation_index11) / segregation_index11),
+#                             is.na(segregation_index14) & is.na(segregation_index12) & is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((segregation_index16 - segregation_index10) / segregation_index10),
+#                             is.na(segregation_index14) & is.na(segregation_index12) & is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((segregation_index16 - segregation_index00) / segregation_index00)),
+#     
+#     popchange14to16 = case_when(!is.na(segregation_index14) ~ abs((district_census_count_total16 - district_census_count_total14) / district_census_count_total14),
+#                                 is.na(segregation_index14) & !is.na(segregation_index12) ~ abs((district_census_count_total16 - district_census_count_total12) / district_census_count_total12),
+#                                 is.na(segregation_index14) & is.na(segregation_index12) & !is.na(segregation_index11) ~ abs((district_census_count_total16 - district_census_count_total11) / district_census_count_total11),
+#                                   is.na(segregation_index14) & is.na(segregation_index12) & is.na(segregation_index11) & !is.na(segregation_index10) ~ abs((district_census_count_total16 - district_census_count_total10) / district_census_count_total10),
+#                                 is.na(segregation_index14) & is.na(segregation_index12) & is.na(segregation_index11) & is.na(segregation_index10) & !is.na(segregation_index00) ~ abs((district_census_count_total16 - district_census_count_total00) / district_census_count_total00)),
+#    
+#    
+#     outlier10 = if_else(change00to10 > popchange00to10, 1, 0),
+#     outlier11 = if_else(change10to11 > popchange10to11, 1, 0),
+#     outlier12 = if_else(change11to12 > popchange11to12, 1, 0),
+#     outlier14 = if_else(change12to14 > popchange12to14, 1, 0),
+#     outlier16 = if_else(change14to16 > popchange14to16, 1, 0)) |>
+#   select(geoleaid, starts_with('outlier')) |>
+#   pivot_longer(cols = -geoleaid,
+#                names_to = 'year',
+#                values_to = 'outlier') |>
+#   mutate(year = as.double(str_remove(year, 'outlier')))
+```
+
+```{r}
+
+long_covars_h1 <- long_covars
+
+# set year reference group to 2000
+# long_covars_h1$year <- factor(long_covars_h1$year)
+# long_covars_h1$year <- relevel(long_covars_h1$year, ref = '2000')
+
+# set court status reference group to "under order"
+long_covars_h1$court_status <- factor(long_covars_h1$court_status)
+long_covars_h1$court_status <- relevel(long_covars_h1$court_status, ref = "under order")
+
+
+# standardize variables
+# 1 standard deviation change in feature results in coefficient times standard deviation change in the y variable
+long_covars_h1 <- long_covars_h1 |>
+  mutate(pblack = scale(pblack, scale=F),
+         pnative = scale(pnative, scale=F),
+         pasian = scale(pasian, scale=F),
+         phawaiianpacific = scale(phawaiianpacific, scale=F),
+         pother = scale(pother, scale=F),
+         pmultiracial = scale(pmultiracial, scale=F),
+         pwhite = scale(pwhite, scale=F),
+         phispaniclatino = scale(phispaniclatino, scale=F),
+         n_attendancezones = scale(n_attendancezones, scale=F),
+         urban = scale(urban, scale=F),
+         suburb = scale(suburb, scale=F),
+         town = scale(town, scale=F),
+         perecd = scale(perecd, scale=F),
+         perell = scale(perell, scale=F),
+         totenrl = scale(totenrl, scale=F),
+         sesavgall = scale(sesavgall, scale=F),
+         district_census_count_total = scale(district_census_count_total, scale=F),
+         year = year - 2000)
+
+```
+
+```{r}
+# create dataset with all same observations for testing models
+long_covars_h1_fitness <- long_covars_h1 |>
+  select(segregation_index,
+         year,
+         geoleaid,
+         pblack,
+         pnative,
+         pasian,
+         phawaiianpacific,
+         pother,
+         pmultiracial,
+         pwhite,
+         phispaniclatino,
+         n_attendancezones,
+         court_status,
+         urban,
+         suburb,
+         town,
+         perecd,
+         perell,
+         district_census_count_total,
+         sesavgall,
+         stateabb) |>
+  drop_na() 
+# |>
+#   left_join(yoy_changes, by=c('geoleaid', 'year')) |>
+#   mutate(outlier = if_else(is.na(outlier) & !is.na(segregation_index), 3, outlier))
+```
+
+### MLM
+
+#### Step 1: examine distributions
+
+check that they're normally distributed (assumption of the model)
+
+```{r}
+# not normally distributed
+qplot(segregation_index, facets = . ~year, data = long_covars_h1)
+# not normally distributed
+qplot(pblack, facets = . ~year, data = long_covars_h1)
+# not normally distributed
+qplot(pnative, facets = . ~year, data = long_covars_h1)
+# not normally distributed
+qplot(pasian, facets = . ~year, data = long_covars_h1)
+# not normally distributed
+qplot(phawaiianpacific, facets = . ~year, data = long_covars_h1)
+# not normally distributed
+qplot(pother, facets = . ~year, data = long_covars_h1) 
+# not normally distributed
+qplot(pmultiracial, facets = . ~year, data = long_covars_h1) 
+# not normally distributed but more so than the others
+qplot(pwhite, facets = . ~year, data = long_covars_h1) 
+# not normally distributed
+qplot(phispaniclatino, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(n_attendancezones, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(court_status, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(urban, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(suburb, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(town, facets = . ~year, data = long_covars_h1) 
+# normally distributed 
+qplot(perecd, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(perell, facets = . ~year, data = long_covars_h1) 
+# not normally distributed 
+qplot(totenrl, facets = . ~year, data = long_covars_h1) 
+# normally distributed 
+qplot(sesavgall, facets = . ~year, data = long_covars_h1) 
+
+qplot(district_census_count_total, facets = . ~year, data = long_covars_h1) 
+
+```
+
+#### Step 2: examine linearity and outliers
+
+##### School Year
+
+plot segregation over time to get a sense of how to include time in model (linear, polynomial, dummy variables)
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1_fitness, aes(x = year, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+looks like segregation becomes more positive over time but hard to tell without seeing the two loess lines
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ year, 
+            data = long_covars_h1_fitness)
+mqfit <- lm(segregation_index ~ poly(year, 2),
+            data = long_covars_h1_fitness)
+mcfit <- lm(segregation_index ~ poly(year, 3),  
+            data = long_covars_h1_fitness)
+m5fit <- lm(segregation_index ~ poly(year, 5),  
+            data = long_covars_h1_fitness)
+mdfit <- lm(segregation_index ~ as.factor(long_covars_h1_fitness$year), 
+            data = long_covars_h1_fitness)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit)
+anova(mdfit, mlfit) 
+anova(m5fit, mcfit)
+```
+
+##### pblack
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pblack, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pblack, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pblack, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pblack, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pblack, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pblack, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+# the dummy one say it goes down from 2000, then up again and again
+# dummy might work the best but then its harder to interact
+# might be that something else happened in 2010 to cause jump/ try model without tmie and then add time as a dummy and see if it still likes it
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### pnative
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pnative, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pnative, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pnative, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pnative, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pnative, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pnative, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### pasian
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pasian, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pasian, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pasian, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pasian, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pasian, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pasian, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### phawaiianpacific
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = phawaiianpacific, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ phawaiianpacific, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(phawaiianpacific, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(phawaiianpacific, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(phawaiianpacific, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(phawaiianpacific, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### pother
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pother, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pother, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pother, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pother, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pother, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pother, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### pmultiracial
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pmultiracial, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pmultiracial, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pmultiracial, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pmultiracial, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pmultiracial, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pmultiracial, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### pwhite
+
+```{r}
+# not printing out the loess lines?
+ggplot(long_covars_h1, aes(x = pwhite, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ pwhite, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(pwhite, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(pwhite, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(pwhite, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(pwhite, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### phispaniclatino
+
+```{r}
+ggplot(long_covars_h1, aes(x = phispaniclatino, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ phispaniclatino, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(phispaniclatino, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(phispaniclatino, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(phispaniclatino, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(phispaniclatino, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mcfit)
+```
+
+##### n_attendancezones
+
+```{r}
+ggplot(long_covars_h1, aes(x = n_attendancezones, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ n_attendancezones, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(n_attendancezones, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(n_attendancezones, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(n_attendancezones, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(n_attendancezones, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### urban
+
+```{r}
+ggplot(long_covars_h1, aes(x = urban, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ urban, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(urban, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(urban, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(urban, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(urban, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### suburb
+
+```{r}
+ggplot(long_covars_h1, aes(x = suburb, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ suburb, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(suburb, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(suburb, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(suburb, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(suburb, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### town
+
+```{r}
+ggplot(long_covars_h1, aes(x = town, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ town, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(town, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(town, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(town, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(town, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### perecd
+
+```{r}
+ggplot(long_covars_h1, aes(x = perecd, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ perecd, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(perecd, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(perecd, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(perecd, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(perecd, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### perell
+
+```{r}
+ggplot(long_covars_h1, aes(x = perell, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ perell, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(perell, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(perell, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(perell, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(perell, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### district_census_count_total
+
+```{r}
+ggplot(long_covars_h1, aes(x = district_census_count_total, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ district_census_count_total, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(district_census_count_total, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(district_census_count_total, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(district_census_count_total, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(district_census_count_total, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+##### sesavgall
+
+```{r}
+ggplot(long_covars_h1, aes(x = sesavgall, y = segregation_index)) +
+  geom_point() +
+  geom_smooth(method = "loess") +
+  geom_smooth(method = "lm", colour = "red")
+```
+
+if the relationship is not linear, the loess line in blue would be more different from the linear in red (red is the linear version)to be sure, can test the different options for modeing time:
+
+```{r}
+#| label: test-time-options
+
+mlfit <- lm(segregation_index ~ sesavgall, 
+            data = long_covars_h1)
+mqfit <- lm(segregation_index ~ poly(sesavgall, 2, raw = T),
+            data = long_covars_h1)
+mcfit <- lm(segregation_index ~ poly(sesavgall, 3, raw = T),  
+            data = long_covars_h1)
+m4fit <- lm(segregation_index ~ poly(sesavgall, 4, raw = T),  
+            data = long_covars_h1)
+m5fit <- lm(segregation_index ~ poly(sesavgall, 5, raw = T),  
+            data = long_covars_h1)
+
+summary(mlfit)
+summary(mqfit)
+summary(mcfit)
+summary(mdfit)
+```
+
+```{r}
+anova(mqfit, mlfit) 
+anova(mcfit, mlfit) 
+anova(m5fit, mlfit)
+anova(m4fit, mlfit)
+anova(m5fit, mqfit)
+```
+
+#### Step 3: model without random intercept, but with time/year
+
+```{r}
+m1 <- lm(segregation_index ~ factor(year), data = long_covars_h1_fitness)
+summary(m1)
+```
+
+#### Step 4: model with random intercept and time/year
+
+```{r}
+m2 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid), 
+           data = long_covars_h1,
+           REML = F)
+
+summary(m2)
+```
+
+#### Step 5: compare models 1 and 2
+
+testing whether there is a correlation between school years within districts (random intercept hypothesis)
+
+```{r}
+anova(m2, m1)
+```
+
+reject the null hypothesis that the segregation intercepts are the same across districts in the population at the first time point
+
+basically saying that there is a correlation between years within the same district on the segregation
+
+#### Step 6: calculate the intraclass correlation
+
+```{r}
+icc(m2)
+```
+
+87% of the variance in segregation is between districts. this means that there's a good amount of variance on the district level
+
+fixed effects intercept: 0.014
+
+standard deviation of district random effects: 0.10447
+
+\_\_\_ percent of the intercepts are between -0.09047 and 0.11847 (idk how to calculate the percent)
+
+#### Step 7: add level 1 predictors
+
+```{r}
+m3 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total, 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m3)
+```
+
+```{r}
+# compare random intercept model to model with predictors
+anova(m2, m3)
+```
+
+model 3 fits better
+
+#### Step 8: model with level 2 predictors
+
+```{r}
+m4 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb, 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m4)
+```
+
+```{r}
+# compare random intercept model to model with predictors
+anova(m3, m4)
+```
+
+model 4 fits better
+
+#### Step 9: a model with random slopes
+
+random slope on year, but no intercept-slope covariance
+
+```{r}
+# fails to converge?
+m5 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + (0 + year | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb, 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m5)
+```
+
+```{r}
+# compare random intercept model to model with predictors
+anova(m4, m5)
+```
+
+random slope on year with intercept-slope covariance
+
+```{r}
+m6 <- lmer(segregation_index ~ factor(year) + (1 + year | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb, 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m6)
+
+# 1 has to do with random intercepts (1 stands for constant whcih means random??) which is just that we're setting an intercept for segregation level, acknowledging that all districts have different levels. the higher the intercept, the more spread segregation is at time0
+# could also set REML could be set to true... maybe better.. but setting to false for now allows you to compare model fitness to another model. the only difference between the two is how it calculates the randomness
+```
+
+```{r}
+anova(m5, m6)
+```
+
+#### Step 10: cross-level interactions
+
+```{r}
+m7 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb  + factor(year):n_attendancezones, 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m7)
+```
+
+```{r}
+m7_reml <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb + factor(year):n_attendancezones, 
+           data = long_covars_h1_fitness,
+           REML = T)
+
+summary(m7_reml)
+```
+
+```{r}
+m7.1 <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb + factor(year):n_attendancezones:court_status + as.character(outlier), 
+           data = long_covars_h1_fitness,
+           REML = F)
+
+summary(m7.1)
+```
+
+```{r}
+m7.1_reml <- lmer(segregation_index ~ factor(year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb + factor(year):court_status + as.character(outlier), 
+           data = long_covars_h1_fitness,
+           REML = T)
+
+summary(m7.1_reml)
+```
+
+REML and ML results similar, so use ML models.
+
+#### Step 11: Error plots
+
+are residuals normally distributed? below suggests so
+
+```{r}
+long_covars_h1_fitness$r_std <- scale(resid(m7))
+
+ggplot(long_covars_h1_fitness, aes(x = r_std)) +
+  geom_histogram(bins = 200)
+```
+
+this QQplot is asking if two samples come from the same distribution
+
+y-axis = standardized residuals (all the variation that is not captured by predictor variables)
+
+x-axis: what the residuals would be if they were normally distributed
+
+in theory, if residuals are not normally distributed, that means you can't trust the results because the estimates will be too high or too low. if there's a non-random pattern in residuals, you should be able to model it. for example, put cause in the fixed part
+
+the below seems to suggest that residuals are skewed -- this may not be a problem when N is large
+
+solution: identify outliers
+
+```{r}
+#| label: residual-errors
+long_covars_h1_fitness$r_std <- scale(resid(m7))
+qqnorm(long_covars_h1_fitness$r_std, pch = 1)
+qqline(long_covars_h1_fitness$r_std, col = "red")
+```
+
+```{r}
+#| label: residual-errors-predicted-attitudes
+
+long_covars_h1_fitness <- mutate(long_covars_h1_fitness, seg_hat_ml = fitted(m7))
+ggplot(long_covars_h1_fitness, aes(x = seg_hat_ml, y = r_std)) +
+  geom_point() +
+  xlab("Predicted seg scores") +
+  ylab("Standardized residuals") + 
+  geom_hline(yintercept = 0, color = "red")
+```
+
+```{r}
+#| label: random-intercept-errors
+
+u <- as.data.frame(ranef(m7)[1])
+
+u$geoleaid <- rownames(u)
+
+u <- as_tibble(u)
+
+
+u <- u %>%
+  rename(u2 = X.Intercept.) %>%
+  inner_join(long_covars_h1_fitness)
+
+ggplot(u, aes(x = seg_hat_ml, y = u2)) +
+  geom_point() +
+  xlab("Predicted seg") +
+  ylab("Intercept") + 
+  geom_hline(yintercept = 0, color = "red")
+```
+
+```{r}
+# DONT NEED THIS ONE BECAUSE IT'S FOR RANDOM SLOPES, WHICH I DON'T USE
+#| label: caterpillar-plots
+# u_condvar <- ranef(m7, condVar = TRUE)
+# varcovar <- attr(u_condvar$geoleaid, "postVar")
+# myplots <- list()
+# 
+# geoleaids <- unique(long_covars_h1_fitness$geoleaid)
+# 
+# # for each random effect
+# for (i in 1:length(u_condvar$geoleaid)) {
+#   # select the random parameter value
+#   myu <- u_condvar$geoleaid[i]
+#   names(myu) <- "myu"
+#   # select the variance, take the square root to get the standard error
+#   myu_se <- apply(varcovar, 3, function(x) sqrt(x[i,i]))   
+#   # combine them and arrange my myu and add a rank
+#   u_se <- as_tibble(cbind(myu, myu_se)) %>%
+#     arrange(myu) %>%
+#     mutate(rank = geoleaids)
+#   # and store the plots in a list with two elements
+#   myylabs <- c("Intercept", "Slope")
+#   myplots[[i]] <- ggplot(u_se, aes(x = rank, y = myu)) +
+#     geom_errorbar(aes(ymin = myu - (myu_se * 1.39), 
+#                       ymax = myu + (myu_se * 1.39))) + 
+#     geom_point() +
+#     geom_hline(yintercept = 0, color = "red") +
+#     ylab(myylabs[i]) +
+#     xlab("Rank")
+# }    
+# 
+# 
+# myplots[[1]]
+# myplots[[2]]   
+```
+
+#### Step 12: identifying outliers
+
+look at leverage + residuals to identify influence
+
+```{r}
+long_covars_h1_fitness <- long_covars_h1_fitness |>
+  # add leverage values (hatvalues). values > 2 are problematic, but 
+  mutate(leverage = hatvalues(m7),
+         residual_squared = resid(m7) * resid(m7))
+
+# with standardized residuals to have sd of 1
+ggplot(long_covars_h1_fitness,
+       aes(x = leverage,
+           y = r_std)) +
+  geom_point()
+
+# with residuals squared
+ggplot(long_covars_h1_fitness,
+       aes(x = leverage,
+           y = residual_squared)) +
+  geom_point()
+```
+
+look at cook's distance
+
+```{r}
+long_covars_h1_fitness <- long_covars_h1_fitness |>
+  mutate(cooks_distance = cooks.distance(m7))
+
+# observations with cooks distance > 1 (florencia's cutoff
+influential_1 <- long_covars_h1_fitness |>
+  filter(cooks_distance > 1)
+
+# much more conservative cutoff found on the internet
+influential_2 <- long_covars_h1_fitness |>
+  filter(cooks_distance > (3 * mean(long_covars_h1_fitness$cooks_distance, na.rm = T)))
+```
+
+look at dfbeta values
+
+```{r}
+long_covars_h1_fitness <- long_covars_h1_fitness |>
+  mutate(dfbeta = dfbetas(m7))
+```
+
+```{r}
+# remove outliers
+
+h1_nooutliers <- long_covars_h1_fitness |>
+  # mutate(influential = if_else(cooks_distance > (3 * mean(long_covars_h1_fitness$cooks_distance, na.rm = T)), 1, 0)) |>
+  mutate(influential = if_else(cooks_distance > 1, 1, 0)) |>
+  filter(influential != 1)
+```
+
+```{r}
+# rerun model without outliers
+m7_nooutliers <- lmer(segregation_index ~ year + I(year * year) + (1 | geoleaid) + pblack + pnative + pasian + phawaiianpacific + pother + pmultiracial + pwhite + phispaniclatino + n_attendancezones + court_status + district_census_count_total + urban + suburb + town + perecd + perell + sesavgall + stateabb + stateabb + year:urban + I(year * year):urban, 
+           data = h1_nooutliers,
+           REML = F)
+
+summary(m7_nooutliers)
+```
+
+the below qqplot looks slightly more flat than the one with outliers
+
+```{r}
+#| label: residual-errors
+h1_nooutliers$r_std <- scale(resid(m7_nooutliers))
+qqnorm(h1_nooutliers$r_std, pch = 1)
+qqline(h1_nooutliers$r_std, col = "red")
+```
+
+```{r}
+#| label: residual-errors-predicted-attitudes
+
+h1_nooutliers <- mutate(h1_nooutliers, seg_hat_ml = fitted(m7_nooutliers))
+ggplot(h1_nooutliers, aes(x = seg_hat_ml, y = r_std)) +
+  geom_point() +
+  xlab("Predicted seg scores") +
+  ylab("Standardized residuals") + 
+  geom_hline(yintercept = 0, color = "red")
+```
+
+```{r}
+#| label: random-intercept-errors
+
+u <- as.data.frame(ranef(m7_nooutliers)[1])
+
+u$geoleaid <- rownames(u)
+
+u <- as_tibble(u)
+
+
+u <- u %>%
+  rename(u2 = X.Intercept.) %>%
+  inner_join(h1_nooutliers)
+
+ggplot(u, aes(x = seg_hat_ml, y = u2)) +
+  geom_point() +
+  xlab("Predicted seg") +
+  ylab("Intercept") + 
+  geom_hline(yintercept = 0, color = "red")
+```
+
+#### 
+
+interpretations (based on scaled regressors)
+
+-   on average, inter-AZ segregation is 0.037 points higher in 2010 than in 2000
+
+    -   by a factor of?
+
+-   on average, a one standard deviation increase in percent of Black students is associated with a -0.024 decrease in segregation
+
+-   segregation is lower
+
+questions:
+
+-   how do i represent scaled variables in a table?
+
+-   make sure correct interpretation for scaled variables
+
+-   how can i make robust standard errors in lmer?
+
+-   do i need to include a model for every time i add a covariate?
+
+-   should i add state fixed effects? or should I add state as a separate level? what's the difference?
+
+### Tables/Graphs
+
+```{r}
+# formatted table
+tab_model(m7,
+          show.ci = FALSE,
+          show.se = T,
+          show.fstat = TRUE,
+          show.obs = TRUE,
+          show.r2 = TRUE,
+          show.dev = TRUE,
+          show.re.var = TRUE,
+          digits = 2,
+          digits.re = 2,
+          p.val = "satterthwaite",
+          p.style = 'stars')
+```
+
+```{r}
+ggplot(long_covars_h1_fitness,
+       aes(x = n_attendancezones,
+           y = segregation_index,
+           color = as.character(year),
+           group = as.character(year))) +
+  geom_smooth(method='lm', formula = m7)
+```
+
+## H3: Segregation increases in school districts in the years after they are released from their court-ordered desegregation plans.
+
+should maybe do clustered standard errors at segregation level or something
+
+```{r}
+# create dataset
+
+release_effect <- wide_covars |>
+  filter(court_ordered == 1) |>
+  filter((status_2020 == 'not dismissed') | ((ffall_2020 > 1999) & (ffall_2020 < 2015))) |>
+  select(geoleaid, 
+         stateabb,
+         sedaleaname, 
+         yrdiss_2020, 
+         ffall_2020,
+         status_2020,
+         court_ordered,
+         segregation_index00, 
+         segregation_index10, 
+         segregation_index11, 
+         segregation_index12, 
+         segregation_index14, 
+         segregation_index16) |>
+  rowwise() |>
+  mutate(earliest = if_else(!is.na(segregation_index00), 1999, NA),
+         earliest = if_else((is.na(earliest) & !is.na(segregation_index10)), 2009, earliest),
+         earliest = if_else((is.na(earliest) & !is.na(segregation_index11)), 2010, earliest),
+         earliest = if_else((is.na(earliest) & !is.na(segregation_index12)), 2011, earliest),
+         earliest = if_else((is.na(earliest) & !is.na(segregation_index14)), 2013, earliest),
+         earliest = if_else((is.na(earliest) & !is.na(segregation_index16)), 2015, earliest),
+         latest = if_else(!is.na(segregation_index16), 2015, NA),
+         latest = if_else((is.na(latest) & !is.na(segregation_index14)), 2013, latest),
+         latest = if_else((is.na(latest) & !is.na(segregation_index12)), 2011, latest),
+         latest = if_else((is.na(latest) & !is.na(segregation_index11)), 2010, latest),
+         latest = if_else((is.na(latest) & !is.na(segregation_index10)), 2009, latest),
+         latest = if_else((is.na(latest) & !is.na(segregation_index00)), 1999, latest)) |>
+  filter(((earliest < ffall_2020) & (latest >= ffall_2020)) | (status_2020 == 'not dismissed')) |>
+  select(-earliest,
+         -latest) |>
+  mutate(treatment = if_else(status_2020 == 'not dismissed', 0, 1))
+```
+
+```{r}
+# racial covariates long
+
+race_long <- wide_covars |>
+  select(geoleaid,
+         # starts_with('pblack'),
+         # starts_with('pnative'),
+         # starts_with('pasian'),
+         # starts_with('phawaiianpacific'),
+         # starts_with('pother'),
+         # starts_with('pmultiracial'),
+         starts_with('pwhite')
+         # ,
+         # starts_with('phispaniclatino'),
+         # starts_with('n_attendancezones')
+         ) |>
+  pivot_longer(cols = -geoleaid,
+               names_to = 'school_year',
+               values_to = 'pwhite') |>
+  mutate(school_year = str_replace(school_year, "pwhite", '20'),
+         school_year = as.numeric(school_year) - 1)
+```
+
+```{r}
+# long version of dataset
+# should add racial categories to this dataset
+
+release_effect_long <- release_effect |>
+  pivot_longer(cols = c(segregation_index00, 
+                        segregation_index10, 
+                        segregation_index11, 
+                        segregation_index12, 
+                        segregation_index14, 
+                        segregation_index16),
+               names_to = 'school_year',
+               values_to = 'segregation_index') |>
+  # set school year to correspond to the fall of the school year
+  mutate(school_year = str_replace(school_year, "segregation_index", ''),
+         school_year = as.numeric(paste0("20", school_year)) - 1,
+         # create year variable that's 1 in the first observed year and counts upwards from there
+         year = school_year - 1999 + 1,
+         # set year_since_diss to be 1 on the first fall released, +1 for each year after (consistent with tom's year_since_nclb variable)
+         year_since_diss = case_when((school_year < ffall_2020) | (status_2020 == 'not dismissed') ~ 0,
+                                     school_year >= ffall_2020 ~ school_year - ffall_2020 + 1),
+         # year is centered on districts' first year of dismissal (negatives for before dismissal, positives for after). 0 set for districts never dismissed
+         year_centered = if_else(status_2020 == 'not dismissed', 0, school_year - ffall_2020),
+         # after_diss = 1 for any year after dismissal (including the first fall). 0 for years before dismissal or for schools who were never dismissed
+         after_diss = if_else((school_year < ffall_2020) | (status_2020 == 'not dismissed'), 0, 1))
+
+release_effect_long <- release_effect_long |>
+  left_join(race_long,
+            by=c('geoleaid', 'school_year'))
+```
+
+```{r}
+# check parallel trends assumption
+
+parallel_trends <- release_effect |>
+  mutate(ffall_2020 = as.character(ffall_2020),
+         ffall_2020 = if_else(is.na(ffall_2020), 'under order', ffall_2020),
+         ffall_2020 = if_else((ffall_2020 == '2000' | ffall_2020 == '2001' | ffall_2020 == '2002' | ffall_2020 == '2003'), 'early 2000s', ffall_2020)) |>
+  group_by(ffall_2020) |>
+  summarize(seg00_mean = mean(segregation_index00, na.rm=TRUE),
+            seg10_mean = mean(segregation_index10, na.rm=TRUE),
+            seg11_mean = mean(segregation_index11, na.rm=TRUE),
+            seg14_mean = mean(segregation_index14, na.rm=TRUE),
+            seg16_mean = mean(segregation_index16, na.rm=TRUE)) |>
+  pivot_longer(cols = -ffall_2020,
+               names_to = 'school_year',
+               values_to = 'segregation_score') |>
+  mutate(school_year = case_when(school_year == 'seg00_mean' ~ '1999-2000',
+                                 school_year == 'seg10_mean' ~ '2009-10',
+                                 school_year == 'seg11_mean' ~ '2010-11',
+                                 school_year == 'seg14_mean' ~ '2013-14',
+                                 school_year == 'seg16_mean' ~ '2015-16')) |>
+  drop_na()
+
+library(hrbrthemes)
+ggplot(parallel_trends, 
+       aes(x = school_year,
+           y = segregation_score)) +
+  geom_point(aes(color = ffall_2020), 
+             size=6) +
+  geom_line(aes(group = ffall_2020, color = ffall_2020)) +
+  scale_colour_brewer(palette = "Set3") +
+  theme_ipsum() +
+  labs(title = "Trends in School Districts' Segregation Over Time\nby Release Status of Court-Ordered Desegregation Plans",
+       x = "School Year",
+       y = 'Inter-Attendance Zone Segregation Level',
+       color = 'Court Order\nRelease Year')
+```
+
+```{r}
+# check that timing of release isn't a predictor of segregation
+
+reduced_form <- lm(segregation_index ~ school_year + geoleaid + stateabb, data = release_effect_long)
+
+summary(reduced_form)
+```
+
+```{r}
+# VERSION BASED ON SEAN'S BROWN FADES PAPER
+# comparative interrupted time-series model
+# i think treatment effect is interaction treatment*after_diss but i'm not sure if i measured after_diss correctly. not sure if all control districts should have 0 for all years 
+# actually tom's slides say you have to add a couple coefficients to get the effect as of certain years, but not sure if we have the same application for my study since treatment timing is differential
+
+
+# cits <- lm(segregation_index ~ year_centered + after_diss + (treatment*year_centered) + (treatment*after_diss) + (treatment*year_since_diss) + geoleaid,
+#            data = release_effect_long)
+# 
+# cits_robust <- coeftest(cits, vcov = vcovHC, type = "HC1")
+# 
+# # doesn't print out the interaction coefficients because of singularities ugh
+# cits_robust
+```
+
+```{r}
+
+# VERSION BASED ON TOM'S 430B SLIDES
+# difference between this and the one above is that in the one above, the year is centered on the treatment timing
+
+cits <- lm(segregation_index ~ year + after_diss + year_since_diss + treatment + (year*treatment) + (treatment*after_diss) + (treatment*year_since_diss) + geoleaid,
+           data = release_effect_long)
+
+cits_robust <- coeftest(cits, vcov = vcovHC, type = "HC1")
+
+# treatment * after_diss is treatment effect
+# year by treatment is what accounts for parallel trends in the preperiod
+# getting singularity in treatment effect. maybe it's because the majority of the sample isn't in treatment (0) and thus has 0 for after_diss
+# not sure if there's much I can do to recover that?
+cits_robust
+```
+
+```{r}
+release_effect_long <- release_effect_long |>
+  rowwise() |>
+  mutate(year_treatment = year*treatment,
+         treatment_afterdiss = treatment*after_diss,
+         treatment_yearsincediss = treatment*year_since_diss)
+```

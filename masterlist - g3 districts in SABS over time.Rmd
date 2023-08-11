@@ -1,0 +1,340 @@
+---
+?rm---
+title: "district participation masterlist"
+author: "Lucy Caffrey-Maffei"
+date: '2022-07-06'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SET UP
+
+```{r setup}
+
+library(tidyverse)
+library(readxl)
+library(writexl)
+```
+
+## SY 15-16
+
+```{r sy15-16}
+# IMPORT MASTERLIST OF SCHOOLS IN SABS FOR SY 15-16
+sy16 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SABS SY2015-2016/SABS_1516.xlsx", col_types = "text")
+
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sy16) <- tolower(names(sy16))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sy16 <- sy16 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sy16 <- sy16 |>
+# kindergarten has value 0 for gslo
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+# preschool has value -1 for gslo
+         gslo = if_else(gslo == "PK", "-1", gslo),
+# replace ungraded with NA for gslo
+         gslo = na_if(gslo, "UG"),
+# replace N with NA for gslo
+         gslo = na_if(gslo, "N"),
+# change gslo from character to numeric variable
+         gslo = as.numeric(gslo),
+# kindergarten has value 0 for gshi
+gshi = if_else(gshi == "KG", "0", gshi),
+# preschool has value -1 for gshi
+         gshi = if_else(gshi == "PK", "-1", gshi),
+# replace ungraded with NA for gshi
+         gshi = na_if(gshi, "UG"),
+# replace N with NA for gshi
+         gshi = na_if(gshi, "N"),
+# change gshi from character to numeric variable
+         gshi = as.numeric(gshi)) 
+
+# FILTER AND COLLAPSE DATAFRAME BY LEAID ID
+sy16 <- sy16 |>
+# filter out to keep only schools that serve 3rd grade
+  filter(gslo <= 3 & gshi >= 3) |>
+# add school_count column with value == 1 for each observation (school)
+  mutate(school_count = 1) |>
+# collapse dataframe by leaid to get list of all school districts with school count for SY 15-16
+  group_by(leaid) |>
+  summarize(g3_school_count_1516 = sum(school_count)) |>
+  ungroup() |>
+  mutate(in_1516sabs = 1)
+```
+
+```{r sy15-16 nonresponse}
+
+# MAKE SURE NO NONRESPONSE SCHOOLS ARE INCLUDED IN MASTERLIST
+
+# import non-response districts
+nonresponse16 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SABS SY2015-2016/District_Nonresponse.xls", col_types = "text")
+
+# convert variable names to lowercase 
+names(nonresponse16) <- tolower(names(nonresponse16))
+
+# rename lea id to make it match the equivalent in sy16 dataframe
+nonresponse16 <- nonresponse16 |>
+  rename(leaid = lea_id) 
+
+# fix lea ids where leading 0s were erased in upload
+nonresponse16 <- nonresponse16 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# list districts that are listed as having not responded to the sabs survey in SY15-16 but are listed in the masterlist of schools regardless"
+remove16 <- semi_join(sy16, nonresponse16)
+remove16 <- pull(remove16, leaid)
+
+# remove non-resonse districts from masterlist
+for (lea in remove16) {
+  sy16 <- filter(sy16, leaid != lea)
+}
+
+```
+
+## SY 13-14
+
+```{r sy13-14}
+
+# IMPORT MASTERLIST OF SCHOOLS IN SABS FOR SY 13-14
+sy14 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SABS SY2013-2014/SABS_1314.xlsx", col_types = "text")
+
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sy14) <- tolower(names(sy14))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sy14 <- sy14 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sy14 <- sy14 |>
+# kindergarten has value 0 for gslo
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+# preschool has value -1 for gslo
+         gslo = if_else(gslo == "PK", "-1", gslo),
+# replace ungraded with NA for gslo
+         gslo = na_if(gslo, "UG"),
+# replace N with NA for gslo
+         gslo = na_if(gslo, "N"),
+# change gslo from character to numeric variable
+         gslo = as.numeric(gslo),
+# kindergarten has value 0 for gshi
+gshi = if_else(gshi == "KG", "0", gshi),
+# preschool has value -1 for gshi
+         gshi = if_else(gshi == "PK", "-1", gshi),
+# replace ungraded with NA for gshi
+         gshi = na_if(gshi, "UG"),
+# replace N with NA for gshi
+         gshi = na_if(gshi, "N"),
+# change gshi from character to numeric variable
+         gshi = as.numeric(gshi)) 
+
+
+# FILTER AND COLLAPSE DATAFRAME BY LEAID ID
+sy14 <- sy14 |>
+# filter out to keep only schools that serve 3rd grade
+  filter(gslo <= 3 & gshi >= 3) |>
+# add school_count column with value == 1 for each observation (school)
+  mutate(school_count = 1) |>
+# collapse dataframe by leaid to get list of all school districts with school count for SY 15-16
+  group_by(leaid) |>
+  summarize(g3_school_count_1314 = sum(school_count)) |>
+  ungroup() |>
+  mutate(in_1314sabs = 1)
+```
+
+```{r sy13-14 nonresponse}
+
+# MAKE SURE NO NONRESPONSE SCHOOLS ARE INCLUDED IN MASTERLIST
+
+# import non-response districts
+nonresponse14 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SABS SY2013-2014/District_Nonresponse.xls", col_types = "text")
+
+# convert variable names to lowercase 
+names(nonresponse14) <- tolower(names(nonresponse14))
+
+# rename lea id to make it match the equivalent in sy16 dataframe
+nonresponse14 <- nonresponse14 |>
+  rename(leaid = lea_id) 
+
+# fix lea ids where leading 0s were erased in upload
+nonresponse14 <- nonresponse14 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# list districts that are listed as having not responded to the sabs survey in SY15-16 but are listed in the masterlist of schools regardless"
+remove14 <- semi_join(sy14, nonresponse14)
+remove14 <- pull(remove14, leaid)
+
+# remove non-resonse districts from masterlist
+for (lea in remove14) {
+  sy14 <- filter(sy14, leaid != lea)
+}
+
+```
+
+## SY 10-11
+
+```{r sy10-11}
+
+# IMPORT MASTERLIST OF SCHOOLS IN SABS FOR SY 10-11
+sy11 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2010-2011/SAA1011.xlsx", col_types = "text")
+
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sy11) <- tolower(names(sy11))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sy11 <- sy11 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sy11 <- sy11 |>
+# kindergarten has value 0 for gslo
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+# preschool has value -1 for gslo
+         gslo = if_else(gslo == "PK", "-1", gslo),
+# replace ungraded with NA for gslo
+         gslo = na_if(gslo, "UG"),
+# replace N with NA for gslo
+         gslo = na_if(gslo, "N"),
+# change gslo from character to numeric variable
+         gslo = as.numeric(gslo),
+# kindergarten has value 0 for gshi
+gshi = if_else(gshi == "KG", "0", gshi),
+# preschool has value -1 for gshi
+         gshi = if_else(gshi == "PK", "-1", gshi),
+# replace ungraded with NA for gshi
+         gshi = na_if(gshi, "UG"),
+# replace N with NA for gshi
+         gshi = na_if(gshi, "N"),
+# change gshi from character to numeric variable
+         gshi = as.numeric(gshi)) 
+
+
+# FILTER AND COLLAPSE DATAFRAME BY LEAID ID
+sy11 <- sy11 |>
+# filter out to keep only schools that serve 3rd grade
+  filter(gslo <= 3 & gshi >= 3) |>
+# add school_count column with value == 1 for each observation (school)
+  mutate(school_count = 1) |>
+# collapse dataframe by leaid to get list of all school districts with school count for SY 15-16
+  group_by(leaid) |>
+  summarize(g3_school_count_1011 = sum(school_count)) |>
+  ungroup() |>
+  mutate(in_1011sabs = 1)
+
+```
+
+## SY 09-10
+
+```{r sy09-10}
+
+# CREATE MASTERLIST OF SCHOOLS IN SABS FOR SY 09-10
+
+# import file
+sy10 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2009-2010/Shapefiles/ACS0610_DP02.xlsx", col_types = "text")
+
+# convert variable names to lowercase
+names(sy10) <- tolower(names(sy10))
+
+# keep only relevant variables
+sy10 <- sy10 |>
+  select(objectid,
+         nces_id,
+         districtid,
+         sdtype,
+         lowgrade,
+         highgrade,
+         fips,
+         stateabbre,
+         s_level,
+         schnam)
+
+# fix LEA IDs that got truncated in upload process
+sy10 <- sy10 |>
+  mutate(districtid = if_else(str_length(districtid) == 6, paste0("0", districtid), districtid))
+
+# change grade variables from class character to class numeric
+sy10$highgrade <- as.numeric(sy10$highgrade)
+sy10$lowgrade <- as.numeric(sy10$lowgrade)
+
+
+# filter and collapse dataframe by leaid id
+sy10 <- sy10 |>
+# rename lea id to make it match the equivalent in other dataframes
+  rename(leaid = districtid) |>
+# filter out to keep only schools that serve 3rd grade, and remove schools with invalid LEA IDs
+  filter(lowgrade <= 3 & highgrade >= 3 & str_length(leaid) == 7) |>
+# add school_count column with value == 1 for each observation (school)
+  mutate(school_count = 1) |>
+# collapse dataframe by leaid to get list of all school districts with school count for SY 15-16
+  group_by(leaid) |>
+  summarize(g3_school_count_0910 = sum(school_count)) |>
+  ungroup() |>
+  mutate(in_0910sabs = 1)
+```
+
+# MERGE SABS DATA ONTO MASTER LIST OF DISTRICTS
+
+```{r masterlist}
+# import masterlist of all districts ever listed in CCD between 1999 - 2020
+all_districts <- read_excel("~/Dropbox/segregation lab/data and programs/data/ccd/list of all districts in ccd.xlsx", col_types = "text")
+
+# fix LEA IDs that got truncated in upload process
+all_districts <- all_districts |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# two districts appear in SABS 09-10 data that are not in the master list -- maybe changed LEA IDs since included in SABS (schools listed as NA for both)
+# all other districts from other SABS years appear in master list of districts
+anti_join(sy10, all_districts)
+
+# merge 15-16 data with masterlist
+masterlist <- left_join(all_districts, sy16)
+
+# merge 13-14 data with masterlist
+masterlist <- left_join(masterlist, sy14)
+
+# merge 10-11 data with masterlist
+masterlist <- left_join(masterlist, sy11)
+
+# merge 09-10 data with masterlist
+masterlist <- left_join(masterlist, sy10)
+
+# clean variable values
+masterlist <- masterlist |>
+  mutate(in_1516sabs = if_else(is.na(in_1516sabs), 0, in_1516sabs),
+         in_1314sabs = if_else(is.na(in_1314sabs), 0, in_1314sabs),
+         in_1011sabs = if_else(is.na(in_1011sabs), 0, in_1011sabs),
+         in_0910sabs = if_else(is.na(in_0910sabs), 0, in_0910sabs))
+
+
+```
+
+# FLAGGING DISTRICTS IN SAL SAPORITO DATA
+
+```{r}
+masterlist <- masterlist |>
+  mutate(in19992000 = if_else((leaid == "2400120") | (leaid == "2400090") | (leaid == "1200180") | (leaid == "1709930") | (leaid == "3200060") | (leaid == "4816230") | (leaid == "2612000") | (leaid == "1200480") | (leaid == "5101260") | (leaid == "1200870") | (leaid == "4823640") | (leaid == "0622710") | (leaid == "1200390") | (leaid == "5509600") | (leaid == "2400480") | (leaid == "3620580") | (leaid == "1201440") | (leaid == "1201500") | (leaid == "4218990") | (leaid == "1201560") | (leaid == "2400510") | (leaid == "0634320"), 1, 0)) |>
+  rowwise() |>
+  mutate(yrs_in_sabs = sum(c(in_1516sabs, in_1314sabs, in_1011sabs, in_0910sabs)),
+         pct_years_in_sabs = yrs_in_sabs/4,
+         yrs_in_all_data = sum(c(in_1516sabs, in_1314sabs, in_1011sabs, in_0910sabs, in19992000)),
+         pct_yrs_in_all_data = yrs_in_all_data/5)
+
+# export masterlist as an excel document
+write_xlsx(masterlist, "~/Dropbox/segregation lab/SABS/Data/masterlist - g3 districts in SABS over time.xlsx")
+```
+
+masterlist does not include schools/districts that:
+
+-   don't serve third grade
+
+-   had lowest or highest grades listed as ungraded or N
+
+-   were in the list of nonresponse schools
+
+-   had LEA IDs of -1 or NA

@@ -1,0 +1,3764 @@
+---
+title: "District Analysis - Schools Serving 3rd Grade in Select Districts"
+author: "Lucy Caffrey-Maffei"
+date: '2022-07-29'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SET UP
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(haven)
+library(janitor)
+library(dplyr)
+library(stringr)
+library(writexl)
+```
+
+```{r setup}
+
+leaid_crosswalk <- read_dta("~/Dropbox/segregation lab/data and programs/data/ccd/imputed school ccd data/segregation lab imputed files/clean school by year imputed data combined collapsed.dta")
+
+sabs00_san_diego <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_San_Diego_fixed_geometries_reprojected.xlsx")
+
+sabs00_prince_georges <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Prince_George_Cnty_fixed_geometries_reprojected.xlsx")
+
+sabs00_pinellas <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Pinellas_fixed_geometries_reprojected.xlsx")
+
+sabs00_philly <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Philadelphia_fixed_geometries_reprojected.xlsx")
+
+sabs00_palm_beach <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Palm_Beach_fixed_geometries_reprojected.xlsx")
+
+sabs00_orange <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Orange_Cnty_fixed_geometries_reprojected.xlsx")
+
+sabs00_montgomery <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Montgomery_Cnty_fixed_geometries_reprojected.xlsx")
+
+sabs00_milwaukee <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Milwaukee_fixed_geometries_reprojected.xlsx")
+
+sabs00_miami <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Miami_Dade_fixed_geometries_reprojected.xlsx")
+
+sabs00_la <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_LA_fixed_geometries_reprojected.xlsx")
+
+sabs00_fairfax <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Fairfax_fixed_geometries_reprojected.xlsx")
+
+sabs00_duval <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Duval_fixed_geometries_reprojected.xlsx")
+
+sabs00_dallas <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Dallas_fixed_geometries_reprojected.xlsx")
+
+sabs00_clark <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Clark_County_fixed_geometries_reprojected.xlsx")
+
+sabs00_chicago <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Chicago_fixed_geometries_reprojected.xlsx")
+
+sabs00_broward <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Broward_fixed_geometries_reprojected.xlsx")
+
+sabs00_baltimore_cnty <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY1999-2000/elem_Baltimore_County_fixed_geometries_reprojected.xlsx")
+
+# 2009-10 data downloaded from the sabins website
+sabins10 <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY2009-10/SABINS (NHGIS Website)/PY_SABINS_0910_03_US_fixed_geometries_reprojected.xlsx")
+
+# 2009-10 data downloaded from the sabs website
+sabs10 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2009-2010/SABS (NCES Website)/Shapefiles/ACS0610_DP04.xlsx", col_types = "text")
+
+# 2010-11 data downloaded from the sabins website
+sabins11 <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY2010-11/SABINS (NHGIS Website)/PY_SABINS_1011_03_US_fixed_geometries_reprojected.xlsx")
+
+# 2011 - 12 data downloaded from the sabs webiste
+sabs11 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2010-2011/SABS (NCES Website)/SAA1011.xlsx", col_types = "text")
+
+sabins12 <- read_excel("~/Dropbox/segregation lab/SABS/Data/3. Reprojected Data with Fixed Geometries and Calculated Areas/SY2011-12 (Minnesota only)/SABINS (NHGIS Website)/PY_SABINS_1112_03_US_fixed_geometries_reprojected.xlsx")
+
+sabs14 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2013-2014/SABS_1314.xlsx", col_types = "text")
+
+sabs16 <- read_excel("~/Dropbox/segregation lab/SABS/Data/1. Raw Data/SY2015-2016/SABS_1516.xlsx", col_types = "text")
+
+
+# district LEA IDs - none changed between 2000 - 2016
+baltimore_cnty <- "2400120"
+broward <- "1200180"
+chicago <- "1709930"
+clark <- "3200060"
+miami <- "1200390"
+dallas <- "4816230"
+duval <- "1200480"
+dc <- "1100030"
+fairfax <- "5101260"
+la <- "0622710"
+milwaukee <- "5509600"
+montgomery <- "2400480"
+nola <- "2201170"
+orange <- "1201440"
+palm_beach <-  "1201500"
+philly <- "4218990"
+pinellas <- "1201560"
+prince_georges <- "2400510"
+san_diego <- "0634320"
+
+geoleaids <- c(baltimore_cnty, broward, chicago, clark, miami, dallas, duval, dc, fairfax, la, milwaukee, montgomery, nola, orange, palm_beach, philly, pinellas, prince_georges, san_diego)
+
+analysis_districts_plus_geoleaids <- data.frame(geoleaids,
+                                                geolea_nm = c("baltimore_cnty", "broward","chicago", "clark", "miami","dallas", "duval", "dc", "fairfax", "la", "milwaukee", "montgomery", "nola", "orange", "palm_beach","philly", "pinellas", "prince_georges", "san_diego"))
+```
+
+# CLEANING DATA SETS
+
+### SAL SAPORITO 1999-2000 DATA
+
+```{r}
+# baltimore county
+sabs00_baltimore_cnty <- sabs00_baltimore_cnty |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = baltimore_cnty,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+
+# broward county
+sabs00_broward <- sabs00_broward |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = broward,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# chicago
+sabs00_chicago <- sabs00_chicago |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = chicago,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# clark county
+sabs00_clark <- sabs00_clark |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = clark,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# dallas
+sabs00_dallas <- sabs00_dallas |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = dallas,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# duval county
+sabs00_duval <- sabs00_duval |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = duval,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# fairfax county
+sabs00_fairfax <- sabs00_fairfax |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = fairfax,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# los angeles
+sabs00_la <- sabs00_la |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = la,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# miami
+sabs00_miami <- sabs00_miami |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = miami,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# milwaukee 
+sabs00_milwaukee <- sabs00_milwaukee |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = milwaukee,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# montgomery county
+sabs00_montgomery <- sabs00_montgomery |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = montgomery,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# orange county
+sabs00_orange <- sabs00_orange |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = orange,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# palm beach
+sabs00_palm_beach <- sabs00_palm_beach |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = palm_beach,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# philadelphia
+sabs00_philly <- sabs00_philly |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = philly,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# pinellas county
+sabs00_pinellas <- sabs00_pinellas |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = pinellas,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# prince george's county
+sabs00_prince_georges <- sabs00_prince_georges |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = prince_georges,
+         ncessch = paste(leaid, ccdId, sep = ""))
+
+# san diego
+sabs00_san_diego <- sabs00_san_diego |>
+  clean_names("lower_camel") |>
+  mutate(across(where(is.character), str_trim)) |>
+  rowwise() |>
+  mutate(leaid = san_diego,
+         ncessch = paste(leaid, ccdId, sep = ""))
+```
+
+### 2009-10 DATA
+
+#### SABINS VERSION
+
+```{r}
+names(sabins10) <- tolower(names(sabins10))
+
+sabins10 <- sabins10 |>
+  rename(ncessch = ns_ncessch,
+         sabinsi = ns_sabinsi,
+         leaid = sdunia_g) |>
+  mutate(across(where(is.character), str_trim))
+```
+
+#### SABS VERSION
+
+```{r}
+names(sabs10) <- tolower(names(sabs10))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sabs10 <- sabs10 |>
+  rename(leaid = districtid,
+         gslo = lowgrade,
+         gshi = highgrade,
+         ncessch = nces_id) |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid),
+         gslo = as.numeric(gslo),
+         gshi = as.numeric(gshi)) |>
+  mutate(across(where(is.character), str_trim)) |>
+  # SABS file contains only schools that serve 3rd grade
+  filter(gslo <= 3 & gshi >= 3)
+
+```
+
+### 2010-11 DATA
+
+#### SABINS VERSION
+
+```{r}
+names(sabins11) <- tolower(names(sabins11))
+
+sabins11 <- sabins11 |>
+  rename(ncessch = ns_ncessch,
+         sabinsi = ns_sabinsi,
+         leaid = sdunia_g) |>
+  mutate(across(where(is.character), str_trim))
+```
+
+#### SABS VERSION
+
+```{r}
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sabs11) <- tolower(names(sabs11))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sabs11 <- sabs11 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sabs11 <- sabs11 |>
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+         gslo = if_else(gslo == "PK", "-1", gslo),
+         gslo = na_if(gslo, "UG"),
+         gslo = na_if(gslo, "N"),
+         gslo = as.numeric(gslo),
+         gshi = if_else(gshi == "KG", "0", gshi),
+         gshi = if_else(gshi == "PK", "-1", gshi),
+         gshi = na_if(gshi, "UG"),
+         gshi = na_if(gshi, "N"),
+         gshi = as.numeric(gshi)) |>
+    mutate(across(where(is.character), str_trim))
+
+
+# SABS file contains only schools that serve 3rd grade
+sabs11 <- sabs11 |>
+  filter(gslo <= 3 & gshi >= 3)
+```
+
+### SABINS 2011-12 DATA (MINNESOTA ONLY)
+
+```{r}
+names(sabins12) <- tolower(names(sabins12))
+
+sabins12 <- sabins12 |>
+  rename(ncessch = ns_ncessch,
+         sabinsi = ns_sabinsi,
+         leaid = sdunia_g) |>
+  mutate(across(where(is.character), str_trim))
+```
+
+### SABS 2013-14 DATA
+
+```{r}
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sabs14) <- tolower(names(sabs14))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sabs14 <- sabs14 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sabs14 <- sabs14 |>
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+         gslo = if_else(gslo == "PK", "-1", gslo),
+         gslo = na_if(gslo, "UG"),
+         gslo = na_if(gslo, "N"),
+         gslo = as.numeric(gslo),
+         gshi = if_else(gshi == "KG", "0", gshi),
+         gshi = if_else(gshi == "PK", "-1", gshi),
+         gshi = na_if(gshi, "UG"),
+         gshi = na_if(gshi, "N"),
+         gshi = as.numeric(gshi)) |>
+    mutate(across(where(is.character), str_trim))
+
+
+
+# SABS file contains only schools that serve 3rd grade
+sabs14 <- sabs14 |>
+  filter(gslo <= 3 & gshi >= 3)
+```
+
+### SABS 2015-16 DATA
+
+```{r}
+# MAKE VARIABLE NAMES ALL LOWERCASE 
+names(sabs16) <- tolower(names(sabs16))
+
+# FIX LEA IDS WHERE LEADING 0s WERE REMOVED IN UPLOAD
+sabs16 <- sabs16 |>
+  mutate(leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid))
+
+# CHANGE LOWEST GRADE (GSLO) AND HIGHEST GRADE (GSHI) TO NUMERIC VALUES 
+sabs16 <- sabs16 |>
+# kindergarten has value 0 for gslo
+  mutate(gslo = if_else(gslo == "KG", "0", gslo),
+# preschool has value -1 for gslo
+         gslo = if_else(gslo == "PK", "-1", gslo),
+# replace ungraded with NA for gslo
+         gslo = na_if(gslo, "UG"),
+# replace N with NA for gslo
+         gslo = na_if(gslo, "N"),
+# change gslo from character to numeric variable
+         gslo = as.numeric(gslo),
+# kindergarten has value 0 for gshi
+gshi = if_else(gshi == "KG", "0", gshi),
+# preschool has value -1 for gshi
+         gshi = if_else(gshi == "PK", "-1", gshi),
+# replace ungraded with NA for gshi
+         gshi = na_if(gshi, "UG"),
+# replace N with NA for gshi
+         gshi = na_if(gshi, "N"),
+# change gshi from character to numeric variable
+         gshi = as.numeric(gshi)) |>
+    mutate(across(where(is.character), str_trim))
+
+# FILTER AND COLLAPSE DATAFRAME BY LEAID ID
+sabs16 <- sabs16 |>
+# filter out to keep only schools that serve 3rd grade
+  filter(gslo <= 3 & gshi >= 3)
+
+```
+
+### LEA ID -\> GEO LEA ID CROSSWALK FILE
+
+school type:
+
+1 = regular school
+
+2 = special education school
+
+3 = vocational school
+
+4 = alternative/other school
+
+5 = ?
+
+```{r cleaning crosswalk data set}
+# keep only years that we have SABS data for and only schools in the districts of interest
+
+leaid_crosswalk_clean <- leaid_crosswalk |>
+  mutate(virtual = as.character(virtual),
+         leaid = if_else(str_length(leaid) == 6, paste0("0", leaid), leaid),
+         geolea = as.character(geolea),
+         geolea = if_else(str_length(geolea) == 6, paste0("0", geolea), geolea)) |>
+  filter((year == 1999 | year == 2009 | year == 2010 | year == 2011 | year == 2013 | year == 2015) & (geolea == baltimore_cnty | geolea == broward | geolea == chicago | geolea == clark | geolea == miami | geolea == dallas | geolea == duval | geolea == dc | geolea == fairfax | geolea == la | geolea == milwaukee | geolea == montgomery | geolea == nola | geolea == orange | geolea == palm_beach | geolea == philly | geolea == pinellas | geolea == prince_georges | geolea == san_diego) & (grdlo <= 3 & grdhi >= 3) & (is.na(virtual) | virtual == 0) & (type != 4) & (type != 2)) |>
+  select(leaid,
+         geolea,
+         county_name,
+         state_name,
+         nces7_final,
+         ncessch,
+         year,
+         charter,
+         magnet,
+         type,
+         grdlo,
+         grdhi) |>
+  mutate(year = case_when(year == "1999" ~ 2000,
+                          year == "2009" ~ 2010,
+                          year == "2010" ~ 2011,
+                          year == "2011" ~ 2012,
+                          year == "2013" ~ 2014,
+                          year == "2015" ~ 2016)) |>
+    mutate(across(where(is.character), str_trim))
+
+# create different crosswalk dataset for each SABS year
+
+years <- unique(leaid_crosswalk_clean$year)
+
+dataframe_names <- c()
+
+for (i in 1:length(years)) {
+    dataframe_names <-append(dataframe_names, paste("schools_for_analysis_" , years[i]))
+    dataframe_names <- str_replace_all(dataframe_names, " ", "")
+    assign(dataframe_names[i], leaid_crosswalk_clean[leaid_crosswalk_clean$year == years[i],])
+}
+```
+
+# GET SCHOOLS FOR ANALYSIS
+
+## 1999-2000 DATA
+
+```{r}
+
+district_schs_missing_2000 <- data.frame()
+
+# create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+dataframe_names2 <- c()
+
+for (i in 1:length(geoleaids)) {
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2000", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2000[schools_for_analysis_2000$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+}
+
+# BALTIMORE COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_baltimore_cnty <- sabs00_baltimore_cnty |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+baltimore_cnty_sabs_schools_2000 <- pull(sabs00_baltimore_cnty, ccdId)
+gis_filter_command_2000_baltimore_cnty <- paste0("CCD_ID = '", baltimore_cnty_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_baltimore <- schools_for_analysis_2000_baltimore_cnty |>
+  anti_join(sabs00_baltimore_cnty, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_baltimore[anti_join_baltimore$magnet == 0 & anti_join_baltimore$charter == 0,])
+
+n_citywide_schools_2000_baltimore_cnty <- nrow(anti_join_baltimore)
+
+# BROWARD COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_broward <- sabs00_broward |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+broward_sabs_schools_2000 <- pull(sabs00_broward, ccdId)
+gis_filter_command_2000_broward <- paste0("CCD_ID = '", broward_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_broward <- schools_for_analysis_2000_broward |>
+  anti_join(sabs00_broward, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_broward[anti_join_broward$magnet == 0 & anti_join_broward$charter == 0,])
+
+n_citywide_schools_2000_broward <- nrow(anti_join_broward)
+
+# CHICAGO
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_chicago <- sabs00_chicago |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+chicago_sabs_schools_2000 <- pull(sabs00_chicago, ccdId)
+gis_filter_command_2000_chicago <- paste0("CCD_ID = '", chicago_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_chicago <- schools_for_analysis_2000_chicago |>
+  anti_join(sabs00_chicago, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_chicago[anti_join_chicago$magnet == 0 & anti_join_chicago$charter == 0,])
+
+n_citywide_schools_2000_chicago <- nrow(anti_join_chicago)
+
+# CLARK COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_clark <- sabs00_clark |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+clark_sabs_schools_2000 <- pull(sabs00_clark, ccdId)
+gis_filter_command_2000_clark <- paste0("CCD_ID = '", clark_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_clark <- schools_for_analysis_2000_clark |>
+  anti_join(sabs00_clark, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_clark[anti_join_clark$magnet == 0 & anti_join_clark$charter == 0,])
+
+n_citywide_schools_2000_clark <- nrow(anti_join_clark)
+
+# DALLAS
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_dallas <- sabs00_dallas |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+dallas_sabs_schools_2000 <- pull(sabs00_dallas, ccdId)
+gis_filter_command_2000_dallas <- paste0("CCD_ID = '", dallas_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_dallas <- schools_for_analysis_2000_dallas |>
+  anti_join(sabs00_dallas, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_dallas[anti_join_dallas$magnet == 0 & anti_join_dallas$charter == 0,])
+
+n_citywide_schools_2000_dallas <- nrow(anti_join_dallas)
+
+# DUVAL COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_duval <- sabs00_duval |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+duval_sabs_schools_2000 <- pull(sabs00_duval, ccdId)
+gis_filter_command_2000_duval <- paste0("CCD_ID = '", duval_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_duval <- schools_for_analysis_2000_duval |>
+  anti_join(sabs00_duval, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_duval[anti_join_duval$magnet == 0 & anti_join_duval$charter == 0,])
+
+n_citywide_schools_2000_duval <- nrow(anti_join_duval)
+
+# FAIRFAX COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_fairfax <- sabs00_fairfax |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+fairfax_sabs_schools_2000 <- pull(sabs00_fairfax, ccdId)
+gis_filter_command_2000_fairfax <- paste0("CCD_ID = '", fairfax_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_fairfax <- schools_for_analysis_2000_fairfax |>
+  anti_join(sabs00_fairfax, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_fairfax[anti_join_fairfax$magnet == 0 & anti_join_fairfax$charter == 0,])
+
+n_citywide_schools_2000_fairfax <- nrow(anti_join_fairfax)
+
+# LOS ANGELES
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_la <- sabs00_la |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+la_sabs_schools_2000 <- pull(sabs00_la, ccdId)
+gis_filter_command_2000_la <- paste0("CCD_ID = '", la_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_la <- schools_for_analysis_2000_la |>
+  anti_join(sabs00_la, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_la[anti_join_la$magnet == 0 & anti_join_la$charter == 0,])
+
+n_citywide_schools_2000_la <- nrow(anti_join_la)
+
+# MIAMI
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_miami <- sabs00_miami |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+miami_sabs_schools_2000 <- pull(sabs00_miami, ccdId)
+gis_filter_command_2000_miami <- paste0("CCD_ID = '", miami_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_miami <- schools_for_analysis_2000_miami |>
+  anti_join(sabs00_miami, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_miami[anti_join_miami$magnet == 0 & anti_join_miami$charter == 0,])
+
+n_citywide_schools_2000_miami <- nrow(anti_join_miami)
+
+# MILWAUKEE
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_milwaukee <- sabs00_milwaukee |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+milwaukee_sabs_schools_2000 <- pull(sabs00_milwaukee, ccdId)
+gis_filter_command_2000_milwaukee <- paste0("CCD_ID = '", milwaukee_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_milwaukee <- schools_for_analysis_2000_milwaukee |>
+  anti_join(sabs00_milwaukee, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_milwaukee[anti_join_milwaukee$magnet == 0 & anti_join_milwaukee$charter == 0,])
+
+n_citywide_schools_2000_milwaukee <- nrow(anti_join_milwaukee)
+
+# MONTGOMERY COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_montgomery <- sabs00_montgomery |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+montgomery_sabs_schools_2000 <- pull(sabs00_montgomery, ccdId)
+gis_filter_command_2000_montgomery <- paste0("CCD_ID = '", montgomery_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_montgomery <- schools_for_analysis_2000_montgomery |>
+  anti_join(sabs00_montgomery, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_montgomery[anti_join_montgomery$magnet == 0 & anti_join_montgomery$charter == 0,])
+
+n_citywide_schools_2000_montgomery <- nrow(anti_join_montgomery)
+
+# ORANGE COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_orange <- sabs00_orange |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+orange_sabs_schools_2000 <- pull(sabs00_orange, ccdId)
+gis_filter_command_2000_orange <- paste0("CCD_ID = '", orange_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_orange <- schools_for_analysis_2000_orange |>
+  anti_join(sabs00_orange, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_orange[anti_join_orange$magnet == 0 & anti_join_orange$charter == 0,])
+
+n_citywide_schools_2000_orange <- nrow(anti_join_orange)
+
+# PALM BEACH
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_palm_beach <- sabs00_palm_beach |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+palm_beach_sabs_schools_2000 <- pull(sabs00_palm_beach, ccdId)
+gis_filter_command_2000_palm_beach <- paste0("CCD_ID = '", palm_beach_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_palm_beach <- schools_for_analysis_2000_palm_beach |>
+  anti_join(sabs00_palm_beach, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_palm_beach[anti_join_palm_beach$magnet == 0 & anti_join_palm_beach$charter == 0,])
+
+n_citywide_schools_2000_palm_beach <- nrow(anti_join_palm_beach)
+
+# PHILADELPHIA
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_philly <- sabs00_philly |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+philly_sabs_schools_2000 <- pull(sabs00_philly, ccdId)
+gis_filter_command_2000_philly <- paste0("CCD_ID = '", philly_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_philly <- schools_for_analysis_2000_philly |>
+  anti_join(sabs00_philly, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_philly[anti_join_philly$magnet == 0 & anti_join_philly$charter == 0,])
+
+n_citywide_schools_2000_philly <- nrow(anti_join_philly)
+
+# PRINCE GEORGE'S COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_prince_georges <- sabs00_prince_georges |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+prince_georges_sabs_schools_2000 <- pull(sabs00_prince_georges, ccdId)
+gis_filter_command_2000_prince_georges <- paste0("CCD_ID = '", prince_georges_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_prince_georges <- schools_for_analysis_2000_prince_georges |>
+  anti_join(sabs00_prince_georges, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_prince_georges[anti_join_prince_georges$magnet == 0 & anti_join_prince_georges$charter == 0,])
+
+n_citywide_schools_2000_prince_georges <- nrow(anti_join_prince_georges)
+
+# PINELLAS COUNTY
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_pinellas <- sabs00_pinellas |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+pinellas_sabs_schools_2000 <- pull(sabs00_pinellas, ccdId)
+gis_filter_command_2000_pinellas <- paste0("CCD_ID = '", pinellas_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_pinellas <- schools_for_analysis_2000_pinellas |>
+  anti_join(sabs00_pinellas, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_pinellas[anti_join_pinellas$magnet == 0 & anti_join_pinellas$charter == 0,])
+
+n_citywide_schools_2000_pinellas<- nrow(anti_join_pinellas)
+
+# SAN DIEGO
+#filter sabs dataset to only have schools that serve 3rd grade (merge crosswalk data into sal's data so that there is grade level data)
+sabs00_san_diego <- sabs00_san_diego |>
+  left_join(schools_for_analysis_2000, by = "ncessch") |>
+  filter(!is.na(grdlo) & !is.na(grdhi))
+
+#get a list of all the school IDs of 3rd grade schools that should be in the district's GIS analysis --> convert them into syntax to filter GIS
+san_diego_sabs_schools_2000 <- pull(sabs00_san_diego, ccdId)
+gis_filter_command_2000_san_diego <- paste0("CCD_ID = '", san_diego_sabs_schools_2000, collapse="' OR ")
+
+#get a list of all the schools that are in the crosswalk file but are NOT in the sabs data to use as a count of citywide school options for district
+# also get a list of all non-charter and non-magnet schools that are not in the SABS data
+anti_join_san_diego <- schools_for_analysis_2000_san_diego |>
+  anti_join(sabs00_san_diego, by = "ncessch")
+
+district_schs_missing_2000 <- rbind(district_schs_missing_2000, anti_join_san_diego[anti_join_san_diego$magnet == 0 & anti_join_san_diego$charter == 0,])
+
+n_citywide_schools_2000_san_diego <- nrow(anti_join_san_diego)
+```
+
+## 2009-10 DATA
+
+(if you want to extract the schools, gis filter commands, etc from the sabins and sabs, need to rerun code as they use the same variable/vector/dataframe names so data gets overriden)
+
+### SABINS VERSION
+
+```{r}
+#THIS VERSION QUERIES BY GISJOIN (SAB) ID, WHILE THE 2010-11 DATA IS QUERIED BY NCES SCHOOL ID
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+gisjoin_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2010_sabins <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+  # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  print(analysis_districts_plus_geoleaids$geolea_nm[i])
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2010", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2010[schools_for_analysis_2010$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2010"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2010[schools_for_analysis_2010$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  assign(leaid_vector_names[i], unique(temp_df_leaids$leaid))
+  
+  # get vector for each district of all the school ids that pertain to the district
+  # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+  gisjoin_vector_names <- append(gisjoin_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_gisjoin_areas_2010"))
+  gisjoin_vector_names <- str_replace_all(gisjoin_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  print(paste("lea ids for district: ", unique(temp_vector_leaids)))
+  temp_df_gisjoin <- filter(sabins10, leaid %in% temp_vector_leaids)
+
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2010", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_gisjoin, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+  district_schs_missing_2010_sabins <- rbind(district_schs_missing_2010_sabins, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0,])
+  
+  temp_df_gisjoin <- unique(pull(temp_df_gisjoin, gisjoin))
+  print(paste("n sabs", length(temp_df_gisjoin)))
+  assign(gisjoin_vector_names[i], temp_df_gisjoin)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2010_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("GISJOIN = '", temp_df_gisjoin, collapse="' OR "))
+}
+
+```
+
+### SABS VERSION
+
+```{r}
+# create 2009-10 crosswalk dataframes for each district of interest
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+ncessch_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2010 <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+  # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2010", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2010[schools_for_analysis_2010$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2010"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2010[schools_for_analysis_2010$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  assign(leaid_vector_names[i], unique(temp_df_leaids$leaid))
+  
+  # get vector for each district of all the school ids that pertain to the district
+  # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+  ncessch_vector_names <- append(ncessch_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_sabs_schools_2010"))
+  ncessch_vector_names <- str_replace_all(ncessch_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  temp_df_ncessch <- filter(sabs10, leaid %in% temp_vector_leaids)
+  
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2010", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_ncessch, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+  district_schs_missing_2010 <- rbind(district_schs_missing_2010, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0 & temp_antijoin$leaid != nola,])
+  
+  temp_df_ncessch <- pull(temp_df_ncessch, ncessch)
+  assign(ncessch_vector_names[i], temp_df_ncessch)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2010_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("NCES_ID = '", temp_df_ncessch, collapse="' OR "))
+}
+```
+
+## 2010-11 DATA
+
+### SABINS VERSION
+
+this version seems to be missing a lot of schools/districts that the sabs files aren't missing
+
+```{r}
+#THIS VERSION QUERIES BY NCES SCHOOL ID, WHILE THE 2009-10 DATA IS QUERIED BY GISJOIN (SAB) ID 
+
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+ncessch_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2011_sabins <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+  # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  print(analysis_districts_plus_geoleaids$geolea_nm[i])
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2011", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2011[schools_for_analysis_2011$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2011"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2011[schools_for_analysis_2011$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  print(paste("n schools in crosswalk for district:", nrow(temp_df_leaids)))
+  assign(leaid_vector_names[i], unique(temp_df_leaids$leaid))
+  
+  # get vector for each district of all the school ids that pertain to the district
+  # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+  ncessch_vector_names <- append(ncessch_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_sabs_schools_2011"))
+  ncessch_vector_names <- str_replace_all(ncessch_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  print(paste("lea ids for district: ", unique(temp_vector_leaids)))
+  temp_df_ncessch <- filter(sabins11, leaid %in% temp_vector_leaids)
+  print(paste("n schools found for county in sabs data", nrow(temp_df_ncessch)))
+  
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2011", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_ncessch, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+  district_schs_missing_2011_sabins <- rbind(district_schs_missing_2011_sabins, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0,])
+  
+  temp_df_ncessch <- unique(pull(temp_df_ncessch, ncessch))
+  print(paste("n schools", length(temp_df_ncessch)))
+  assign(ncessch_vector_names[i], temp_df_ncessch)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2011_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("ncessch = '", temp_df_ncessch, collapse="' OR "))
+}
+```
+
+### SABS VERSION
+
+```{r}
+# create 2009-10 crosswalk dataframes for each district of interest
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+ncessch_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2011 <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+  # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2011", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2011[schools_for_analysis_2011$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2011"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2011[schools_for_analysis_2011$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  assign(leaid_vector_names[i], unique(temp_df_leaids$leaid))
+  
+  # get vector for each district of all the school ids that pertain to the district
+  # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+  ncessch_vector_names <- append(ncessch_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_sabs_schools_2011"))
+  ncessch_vector_names <- str_replace_all(ncessch_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  temp_df_ncessch <- filter(sabs11, leaid %in% temp_vector_leaids)
+  
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2011", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_ncessch, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+  district_schs_missing_2011 <- rbind(district_schs_missing_2011, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0 & temp_antijoin$leaid != milwaukee & temp_antijoin$leaid != nola,])
+  
+  temp_df_ncessch <- pull(temp_df_ncessch, ncessch)
+  assign(ncessch_vector_names[i], temp_df_ncessch)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2011_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("ncessch = '", temp_df_ncessch, collapse="' OR "))
+}
+```
+
+## 2013-14 DATA
+
+```{r}
+
+# create 2013-14 crosswalk dataframes for each district of interest
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+ncessch_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2014 <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+  # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2014", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2014[schools_for_analysis_2014$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2014"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2014[schools_for_analysis_2014$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  assign(leaid_vector_names[i], unique(temp_df_leaids$leaid))
+  
+  # get vector for each district of all the school ids that pertain to the district
+  # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+  ncessch_vector_names <- append(ncessch_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_sabs_schools_2014"))
+  ncessch_vector_names <- str_replace_all(ncessch_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  temp_df_ncessch <- filter(sabs14, leaid %in% temp_vector_leaids)
+  
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2014", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_ncessch, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+  district_schs_missing_2014 <- rbind(district_schs_missing_2014, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0,])
+  
+  temp_df_ncessch <- pull(temp_df_ncessch, ncessch)
+  assign(ncessch_vector_names[i], temp_df_ncessch)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2014_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("ncessch = '", temp_df_ncessch, collapse="' OR "))
+}
+```
+
+## 2015-16 DATA
+
+```{r}
+
+dataframe_names2 <- c()
+leaid_vector_names <- c()
+ncessch_vector_names <- c()
+n_citywide_schools <- c()
+gis_filter_command <- c()
+district_schs_missing_2016 <- data.frame()
+
+
+for (i in 1:length(geoleaids)) {
+    # create separate leaid -> geoleaid crosswalk dataframe for each district of interest containing only their relevant schools
+  dataframe_names2 <- append(dataframe_names2, paste("schools_for_analysis_2016", analysis_districts_plus_geoleaids$geolea_nm[i], sep = "_"))
+  assign(dataframe_names2[i], schools_for_analysis_2016[schools_for_analysis_2016$geolea == analysis_districts_plus_geoleaids$geoleaids[i],])
+  
+  # create vectors for each district of interest with all lea ids associated with district (find by looking at geoleaid)
+  leaid_vector_names <- append(leaid_vector_names, paste0(analysis_districts_plus_geoleaids$geolea_nm[i], "_leaids_2016"))
+  leaid_vector_names <- str_replace_all(leaid_vector_names, " ", "")
+  temp_df_leaids <- schools_for_analysis_2016[schools_for_analysis_2016$geolea == analysis_districts_plus_geoleaids$geoleaids[i],]
+  assign(leaid_vector_names[i], length(unique(temp_df_leaids$leaid)))
+  
+    # get vector for each district of all the school ids that pertain to the district
+    # plus get number of city-wide magnet/charter schools that are in the crosswalk file but are not in the sabs file (because they DON'T have have a SAB). school options for each intersection area in that district should be augmented by this number
+
+  ncessch_vector_names <- append(ncessch_vector_names, paste(analysis_districts_plus_geoleaids$geolea_nm[i], "_sabs_schools_2016"))
+  ncessch_vector_names <- str_replace_all(ncessch_vector_names, " ", "")
+  temp_vector_leaids <- pull(temp_df_leaids, leaid)
+  temp_df_ncessch <- filter(sabs16, leaid %in% temp_vector_leaids)
+  
+  n_citywide_schools <- append(n_citywide_schools, paste("n_citywide_schools", analysis_districts_plus_geoleaids$geolea_nm[i], "2016", sep = "_"))
+  temp_antijoin <- anti_join(temp_df_leaids, temp_df_ncessch, by = "ncessch")
+  assign(n_citywide_schools[i], nrow(temp_antijoin))
+    district_schs_missing_2016 <- rbind(district_schs_missing_2016, temp_antijoin[temp_antijoin$magnet == 0 & temp_antijoin$charter == 0 & temp_antijoin$leaid != "5509600",])
+
+  
+  temp_df_ncessch <- pull(temp_df_ncessch, ncessch)
+  assign(ncessch_vector_names[i], temp_df_ncessch)
+  
+  # create the syntax used to filter the gis attribute table to include only schools for districts of interest
+  gis_filter_command <- append(gis_filter_command, paste("gis_filter_command_2016_", analysis_districts_plus_geoleaids$geolea_nm[i]))
+  gis_filter_command <- str_replace_all(gis_filter_command, " ", "")
+  assign(gis_filter_command[i], paste0("ncessch = '", temp_df_ncessch, collapse="' OR "))
+}
+```
+
+# TO CALCULATE AVG SCHOOL OPTIONS PER STUDENT IN DISTRICT
+
+## 1999-2000 DATA
+
+```{r}
+# add column to original dataset (with all analysis districts' names and lea ids) to hold their avg school options for this year
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = NA,
+         avg_sch_ops_2000 = as.numeric(avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = NA,
+         avg_neighborhood_sch_ops_2000 = as.numeric(avg_neighborhood_sch_ops_2000))
+
+# baltimore county
+baltimore_county_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Baltimore County (2400120)/Baltimore County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+baltimore_cnty_census_count <- count(baltimore_county_sabs_2000, GISJOIN)
+
+baltimore_county_sabs_2000 <- baltimore_county_sabs_2000 |>
+  left_join(baltimore_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_baltimore_cnty),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == baltimore_cnty, sum(baltimore_county_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == baltimore_cnty, sum(baltimore_county_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# broward county
+broward_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Broward County (1200180)/Broward County SABS 1999-2000 - Long by Census Block Age Populations.csv")
+
+broward_census_count <- count(broward_sabs_2000, GISJOIN)
+
+broward_sabs_2000 <- broward_sabs_2000 |>
+  left_join(broward_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_broward),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == broward, sum(broward_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == broward, sum(broward_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# chicago
+chicago_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Chicago (1709930)/Chicago SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+chicago_census_count <- count(chicago_sabs_2000, GISJOIN)
+
+chicago_sabs_2000 <- chicago_sabs_2000 |>
+  left_join(chicago_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_chicago),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == chicago, sum(chicago_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == chicago, sum(chicago_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# clark county
+clark_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Clark County (3200060)/Clark County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+clark_census_count <- count(clark_sabs_2000, GISJOIN)
+
+clark_sabs_2000 <- clark_sabs_2000 |>
+  left_join(clark_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_clark),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == clark, sum(clark_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == clark, sum(clark_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# dallas
+dallas_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Dallas (4816230)/Dallas SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+dallas_census_count <- count(dallas_sabs_2000, GISJOIN)
+
+dallas_sabs_2000 <- dallas_sabs_2000 |>
+  left_join(dallas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_dallas),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == dallas, sum(dallas_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == dallas, sum(dallas_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# duval county
+duval_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Duval (1200480)/Duval County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+duval_census_count <- count(duval_sabs_2000, GISJOIN)
+
+duval_sabs_2000 <- duval_sabs_2000 |>
+  left_join(duval_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_duval),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == duval, sum(duval_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == duval, sum(duval_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# fairfax county
+fairfax_sabs_2000 <-read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Fairfax County (5101260)/Fairfax County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+fairfax_census_count <- count(fairfax_sabs_2000, GISJOIN)
+
+fairfax_sabs_2000 <- fairfax_sabs_2000 |>
+  left_join(fairfax_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_fairfax),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == fairfax, sum(fairfax_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == fairfax, sum(fairfax_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# los angeles
+la_sabs_2000 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/LA (0622710)/Los Angeles SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+la_census_count <- count(la_sabs_2000, GISJOIN)
+
+la_sabs_2000 <- la_sabs_2000 |>
+  left_join(la_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_la),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == la, sum(la_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == la, sum(la_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# miami
+miami_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Miami-Dade (1200390)/Miami-Dade SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+miami_census_count <- count(miami_sabs_2000, GISJOIN)
+
+miami_sabs_2000 <- miami_sabs_2000 |>
+  left_join(miami_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_miami),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == miami, sum(miami_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == miami, sum(miami_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# milwaukee
+milwaukee_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Milwaukee (5509600)/Milwaukee SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+milwaukee_census_count <- count(milwaukee_sabs_2000, GISJOIN)
+
+milwaukee_sabs_2000 <- milwaukee_sabs_2000 |>
+  left_join(milwaukee_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_milwaukee),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# montgomery
+montgomery_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Montgomery County (2400480)/Montgomery County SABS 1999-2000 - Long by Census Block Age Populations.csv")
+
+montgomery_census_count <- count(montgomery_sabs_2000, GISJOIN)
+
+montgomery_sabs_2000 <- montgomery_sabs_2000 |>
+  left_join(montgomery_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_montgomery),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == montgomery, sum(montgomery_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == montgomery, sum(montgomery_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# orange county
+orange_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Orange County (1201440)/Orange County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+orange_census_count <- count(orange_sabs_2000, GISJOIN)
+
+orange_sabs_2000 <- orange_sabs_2000 |>
+  left_join(orange_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_orange),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == orange, sum(orange_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == orange, sum(orange_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# palm beach
+palm_beach_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Palm Beach (1201500)/Palm Beach SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+palm_beach_census_count <- count(palm_beach_sabs_2000, GISJOIN)
+
+palm_beach_sabs_2000 <- palm_beach_sabs_2000 |>
+  left_join(palm_beach_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_palm_beach),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# philadelphia
+philly_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Philadelphia (4218990)/Philadelphia SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+philly_census_count <- count(philly_sabs_2000, GISJOIN)
+
+philly_sabs_2000 <- philly_sabs_2000 |>
+  left_join(philly_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_philly),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == philly, sum(philly_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == philly, sum(philly_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# pinellas county
+pinellas_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Pinellas (1201560)/Pinellas County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+pinellas_census_count <- count(pinellas_sabs_2000, GISJOIN)
+
+pinellas_sabs_2000 <- pinellas_sabs_2000 |>
+  left_join(pinellas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_pinellas),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == pinellas, sum(pinellas_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == pinellas, sum(pinellas_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# prince george's county
+prince_georges_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Prince George's County (2400510)/Prince George's County SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+prince_georges_census_count <- count(prince_georges_sabs_2000, GISJOIN)
+
+prince_georges_sabs_2000 <- prince_georges_sabs_2000 |>
+  left_join(prince_georges_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_prince_georges),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+
+# san diego
+san_diego_sabs_2000 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/San Diego (0634320)/San Diego SABS Intersections 1999-2000 - Long by Census Block Age Populations.csv")
+
+san_diego_census_count <- count(san_diego_census_count, GISJOIN)
+
+san_diego_sabs_2000 <- san_diego_sabs_2000 |>
+  left_join(san_diego_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_2000_san_diego),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2000 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2000$sab_schools_per_child), avg_sch_ops_2000),
+         avg_neighborhood_sch_ops_2000 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2000$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2000))
+```
+
+## 2009-10 DATA
+
+```{r}
+# add column to original dataset (with all analysis districts' names and lea ids) to hold their avg school options for this year
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = NA,
+         avg_sch_ops_2010 = as.numeric(avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = NA,
+         avg_neighborhood_sch_ops_2010 = as.numeric(avg_neighborhood_sch_ops_2010))
+
+# baltimore county
+baltimore_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Baltimore County (2400120)/Baltimore County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+baltimore_cnty_census_count <- count(baltimore_cnty_sabs_2010, GISJOIN)
+
+baltimore_cnty_sabs_2010 <- baltimore_cnty_sabs_2010 |>
+  left_join(baltimore_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_baltimore_cnty_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+
+# broward county
+broward_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Broward County (1200180)/Broward County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+broward_cnty_census_count <- count(broward_cnty_sabs_2010, GISJOIN)
+
+broward_cnty_sabs_2010 <- broward_cnty_sabs_2010 |>
+  left_join(broward_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_broward_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# chicago
+
+chicago_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Chicago (1709930)/Chicago SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+chicago_census_count <- count(chicago_sabs_2010, GISJOIN)
+
+chicago_sabs_2010 <- chicago_sabs_2010 |>
+  left_join(chicago_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_chicago_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == chicago, sum(chicago_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == chicago, sum(chicago_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# clark county
+
+clark_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Clark County (3200060)/Clark County SABS Interactions 2009-10 - Long by Census Block Age Populations.csv")
+
+clark_cnty_census_count <- count(clark_cnty_sabs_2010, GISJOIN)
+
+clark_cnty_sabs_2010 <- clark_cnty_sabs_2010 |>
+  left_join(clark_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_clark_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# dallas
+
+dallas_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Dallas (4816230)/Dallas SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+dallas_census_count <- count(dallas_sabs_2010, GISJOIN)
+
+dallas_sabs_2010 <- dallas_sabs_2010 |>
+  left_join(dallas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dallas_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == dallas, sum(dallas_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == dallas, sum(dallas_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# dc
+
+dc_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/DC (​​1100030)/DC SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+dc_census_count <- count(dc_sabs_2010, GISJOIN)
+
+dc_sabs_2010 <- dc_sabs_2010 |>
+  left_join(dc_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dc_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == dc, sum(dc_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == dc, sum(dc_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# duval county
+
+duval_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Duval (1200480)/Duval County SABS Intersections 2009-10- Long by Census Block Age Populations.csv")
+
+duval_cnty_census_count <- count(duval_cnty_sabs_2010, GISJOIN)
+
+duval_cnty_sabs_2010 <- duval_cnty_sabs_2010 |>
+  left_join(duval_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_duval_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# fairfax county
+
+fairfax_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Fairfax County (5101260)/Fairfax County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+fairfax_cnty_census_count <- count(fairfax_cnty_sabs_2010, GISJOIN)
+
+fairfax_cnty_sabs_2010 <- fairfax_cnty_sabs_2010 |>
+  left_join(fairfax_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_fairfax_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# los angeles
+
+la_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/LA (0622710)/Los Angeles SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+la_census_count <- count(la_sabs_2010, GISJOIN)
+
+la_sabs_2010 <- la_sabs_2010 |>
+  left_join(la_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_la_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == la, sum(la_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == la, sum(la_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# miami-dade
+
+miami_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Miami-Dade (1200390)/Miami-Dade SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+miami_census_count <- count(miami_sabs_2010, GISJOIN)
+
+miami_sabs_2010 <- miami_sabs_2010 |>
+  left_join(miami_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_miami_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == miami, sum(miami_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == miami, sum(miami_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+#milwaukee
+milwaukee_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Milwaukee (5509600)/Milwaukee SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+milwaukee_census_count <- count(milwaukee_sabs_2010, GISJOIN)
+
+milwaukee_sabs_2010 <- milwaukee_sabs_2010 |>
+  left_join(milwaukee_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_milwaukee_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# montgomery county
+
+montgomery_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Montgomery County (2400480)/Montgomery County SABS 2009-10 - Long by Census Block Age Populations.csv")
+
+montgomery_cnty_census_count <- count(montgomery_cnty_sabs_2010, GISJOIN)
+
+montgomery_cnty_sabs_2010 <- montgomery_cnty_sabs_2010 |>
+  left_join(montgomery_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_montgomery_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# orange county
+
+orange_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Orange County (1201440)/Orange County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+orange_cnty_census_count <- count(orange_cnty_sabs_2010, GISJOIN)
+
+orange_cnty_sabs_2010 <- orange_cnty_sabs_2010 |>
+  left_join(orange_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_orange_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# palm beach
+palm_beach_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Palm Beach (1201500)/Palm Beach SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+palm_beach_census_count <- count(palm_beach_sabs_2010, GISJOIN)
+
+palm_beach_sabs_2010 <- palm_beach_sabs_2010 |>
+  left_join(palm_beach_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_palm_beach_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+# philadelphia
+
+philly_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Philadelphia (4218990)/Philadelphia SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+philly_census_count <- count(philly_sabs_2010, GISJOIN)
+
+philly_sabs_2010 <- philly_sabs_2010 |>
+  left_join(philly_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_philly_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == philly, sum(philly_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == philly, sum(philly_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+# pinellas
+pinellas_cnty_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Pinellas (1201560)/Pinellas County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+pinellas_cnty_census_count <- count(pinellas_cnty_sabs_2010, GISJOIN)
+
+pinellas_cnty_sabs_2010 <- pinellas_cnty_sabs_2010 |>
+  left_join(pinellas_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_pinellas_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+
+# prince george's county
+
+prince_georges_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Prince George's County (2400510)/Prince George's County SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+prince_georges_census_count <- count(prince_georges_sabs_2010, GISJOIN)
+
+prince_georges_sabs_2010 <- prince_georges_sabs_2010 |>
+  left_join(prince_georges_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_prince_georges_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+
+
+# san diego
+
+san_diego_sabs_2010 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/San Diego (0634320)/San Diego SABS Intersections 2009-10 - Long by Census Block Age Populations.csv")
+
+san_diego_census_count <- count(san_diego_sabs_2010, GISJOIN)
+
+san_diego_sabs_2010 <- san_diego_sabs_2010 |>
+  left_join(san_diego_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_san_diego_2010),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2010 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2010$sab_schools_per_child), avg_sch_ops_2010),
+         avg_neighborhood_sch_ops_2010 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2010$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2010))
+```
+
+## 2010-11 DATA
+
+```{r}
+# add column to original dataset (with all analysis districts' names and lea ids) to hold their avg school options for this year
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = NA,
+         avg_sch_ops_2011 = as.numeric(avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = NA,
+         avg_neighborhood_sch_ops_2011 = as.numeric(avg_neighborhood_sch_ops_2011))
+
+# baltimore county
+baltimore_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Baltimore County (2400120)/Baltimore County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+baltimore_cnty_census_count <- count(baltimore_cnty_sabs_2011, GISJOIN)
+
+baltimore_cnty_sabs_2011 <- baltimore_cnty_sabs_2011 |>
+  left_join(baltimore_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_baltimore_cnty_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# broward county
+broward_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Broward County (1200180)/Broward County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+broward_cnty_census_count <- count(broward_cnty_sabs_2011, GISJOIN)
+
+broward_cnty_sabs_2011 <- broward_cnty_sabs_2011 |>
+  left_join(broward_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_broward_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# chicago
+
+chicago_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Chicago (1709930)/Chicago SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+chicago_census_count <- count(chicago_sabs_2011, GISJOIN)
+
+chicago_sabs_2011 <- chicago_sabs_2011 |>
+  left_join(chicago_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_chicago_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == chicago, sum(chicago_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == chicago, sum(chicago_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# clark county
+
+clark_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Clark County (3200060)/Clark County SABS Interactions 2010-11 - Long by Census Block Age Populations.csv")
+
+clark_cnty_census_count <- count(clark_cnty_sabs_2011, GISJOIN)
+
+clark_cnty_sabs_2011 <- clark_cnty_sabs_2011 |>
+  left_join(clark_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_clark_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# dallas
+
+dallas_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Dallas (4816230)/Dallas SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+dallas_census_count <- count(dallas_sabs_2011, GISJOIN)
+
+dallas_sabs_2011 <- dallas_sabs_2011 |>
+  left_join(dallas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dallas_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == dallas, sum(dallas_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == dallas, sum(dallas_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# dc
+
+dc_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/DC (​​1100030)/DC SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+dc_census_count <- count(dc_sabs_2011, GISJOIN)
+
+dc_sabs_2011 <- dc_sabs_2011 |>
+  left_join(dc_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dc_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == dc, sum(dc_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == dc, sum(dc_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# duval county
+
+duval_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Duval (1200480)/Duval County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+duval_cnty_census_count <- count(duval_cnty_sabs_2011, GISJOIN)
+
+duval_cnty_sabs_2011 <- duval_cnty_sabs_2011 |>
+  left_join(duval_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_duval_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# fairfax county
+
+fairfax_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Fairfax County (5101260)/Fairfax County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+fairfax_cnty_census_count <- count(fairfax_cnty_sabs_2011, GISJOIN)
+
+fairfax_cnty_sabs_2011 <- fairfax_cnty_sabs_2011 |>
+  left_join(fairfax_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_fairfax_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# los angeles
+
+la_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/LA (0622710)/Los Angeles SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+la_census_count <- count(la_sabs_2011, GISJOIN)
+
+la_sabs_2011 <- la_sabs_2011 |>
+  left_join(la_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_la_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == la, sum(la_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == la, sum(la_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# miami-dade
+
+miami_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Miami-Dade (1200390)/Miami-Dade SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+miami_census_count <- count(miami_sabs_2011, GISJOIN)
+
+miami_sabs_2011 <- miami_sabs_2011 |>
+  left_join(miami_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_miami_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == miami, sum(miami_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == miami, sum(miami_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# montgomery county
+
+montgomery_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Montgomery County (2400480)/Montgomery County SABS 2010-11 - Long by Census Block Age Populations.csv")
+
+montgomery_cnty_census_count <- count(montgomery_cnty_sabs_2011, GISJOIN)
+
+montgomery_cnty_sabs_2011 <- montgomery_cnty_sabs_2011 |>
+  left_join(montgomery_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_montgomery_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# orange county
+
+orange_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Orange County (1201440)/Orange County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+orange_cnty_census_count <- count(orange_cnty_sabs_2011, GISJOIN)
+
+orange_cnty_sabs_2011 <- orange_cnty_sabs_2011 |>
+  left_join(orange_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_orange_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# palm beach
+palm_beach_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Palm Beach (1201500)/Palm Beach SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+palm_beach_census_count <- count(palm_beach_sabs_2011, GISJOIN)
+
+palm_beach_sabs_2011 <- palm_beach_sabs_2011 |>
+  left_join(palm_beach_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_palm_beach_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# philadelphia
+
+philly_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Philadelphia (4218990)/Philadelphia SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+philly_census_count <- count(philly_sabs_2011, GISJOIN)
+
+philly_sabs_2011 <- philly_sabs_2011 |>
+  left_join(philly_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_philly_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == philly, sum(philly_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == philly, sum(philly_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# pinellas
+pinellas_cnty_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Pinellas (1201560)/Pinellas County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+pinellas_cnty_census_count <- count(pinellas_cnty_sabs_2011, GISJOIN)
+
+pinellas_cnty_sabs_2011 <- pinellas_cnty_sabs_2011 |>
+  left_join(pinellas_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_pinellas_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# prince george's county
+
+prince_georges_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Prince George's County (2400510)/Prince George's County SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+prince_georges_census_count <- count(prince_georges_sabs_2011, GISJOIN)
+
+prince_georges_sabs_2011 <- prince_georges_sabs_2011 |>
+  left_join(prince_georges_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_prince_georges_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+
+# san diego
+
+san_diego_sabs_2011 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/San Diego (0634320)/San Diego SABS Intersections 2010-11 - Long by Census Block Age Populations.csv")
+
+san_diego_census_count <- count(san_diego_sabs_2011, GISJOIN)
+
+san_diego_sabs_2011 <- san_diego_sabs_2011 |>
+  left_join(san_diego_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_san_diego_2011),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2011 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2011$sab_schools_per_child), avg_sch_ops_2011),
+         avg_neighborhood_sch_ops_2011 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2011$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2011))
+```
+
+## 2013-14 DATA
+
+```{r}
+# add column to original dataset (with all analysis districts' names and lea ids) to hold their avg school options for this year
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = NA,
+         avg_sch_ops_2014 = as.numeric(avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = NA,
+         avg_neighborhood_sch_ops_2014 = as.numeric(avg_neighborhood_sch_ops_2014))
+
+# baltimore county
+baltimore_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Baltimore County (2400120)/Baltimore County SABS Intersections 13-14 - Long by Census Block Age Populations.csv")
+
+baltimore_cnty_census_count <- count(baltimore_cnty_sabs_2014, GISJOIN)
+
+baltimore_cnty_sabs_2014 <- baltimore_cnty_sabs_2014 |>
+  left_join(baltimore_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_baltimore_cnty_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# broward county
+broward_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Broward County (1200180)/Broward County SABS Intersections 13-14 Long by Census Block Age Population.csv")
+
+broward_cnty_census_count <- count(broward_cnty_sabs_2014, GISJOIN)
+
+broward_cnty_sabs_2014 <- broward_cnty_sabs_2014 |>
+  left_join(broward_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_broward_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# chicago
+
+chicago_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Chicago (1709930)/Chicago SABS Intersections 13-14 - Long by Census Block Age Populations.csv")
+
+chicago_census_count <- count(chicago_sabs_2014, GISJOIN)
+
+chicago_sabs_2014 <- chicago_sabs_2014 |>
+  left_join(chicago_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_chicago_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == chicago, sum(chicago_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == chicago, sum(chicago_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# clark county
+
+clark_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Clark County (3200060)/Clark County SABS Interactions 13-14 - Long by Census Block Age Populations.csv")
+
+clark_cnty_census_count <- count(clark_cnty_sabs_2014, GISJOIN)
+
+clark_cnty_sabs_2014 <- clark_cnty_sabs_2014 |>
+  left_join(clark_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_clark_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# dallas
+
+dallas_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Dallas (4816230)/Dallas SABS Intersections 13-14 - Long by Census Block Age Populations.csv")
+
+dallas_census_count <- count(dallas_sabs_2014, GISJOIN)
+
+dallas_sabs_2014 <- dallas_sabs_2014 |>
+  left_join(dallas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dallas_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == dallas, sum(dallas_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == dallas, sum(dallas_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# dc
+
+dc_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/DC (​​1100030)/DC SABS Intersections 13-14 - Long by Census Block Age Populations.csv")
+
+dc_census_count <- count(dc_sabs_2014, GISJOIN)
+
+dc_sabs_2014 <- dc_sabs_2014 |>
+  left_join(dc_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dc_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == dc, sum(dc_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == dc, sum(dc_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# duval county
+
+duval_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Duval (1200480)/Duval County SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+duval_cnty_census_count <- count(duval_cnty_sabs_2014, GISJOIN)
+
+duval_cnty_sabs_2014 <- duval_cnty_sabs_2014 |>
+  left_join(duval_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_duval_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# fairfax county
+
+fairfax_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Fairfax County (5101260)/Fairfax County SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+fairfax_cnty_census_count <- count(fairfax_cnty_sabs_2014, GISJOIN)
+
+fairfax_cnty_sabs_2014 <- fairfax_cnty_sabs_2014 |>
+  left_join(fairfax_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_fairfax_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# los angeles
+
+la_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/LA (0622710)/Los Angeles SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+la_census_count <- count(la_sabs_2014, GISJOIN)
+
+la_sabs_2014 <- la_sabs_2014 |>
+  left_join(la_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_la_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == la, sum(la_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == la, sum(la_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# miami-dade
+
+miami_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Miami-Dade (1200390)/Miami-Dade SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+miami_census_count <- count(miami_sabs_2014, GISJOIN)
+
+miami_sabs_2014 <- miami_sabs_2014 |>
+  left_join(miami_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_miami_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == miami, sum(miami_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == miami, sum(miami_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+#milwaukee
+milwaukee_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Milwaukee (5509600)/Milwaukee SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+milwaukee_census_count <- count(milwaukee_sabs_2014, GISJOIN)
+
+milwaukee_sabs_2014 <- milwaukee_sabs_2014 |>
+  left_join(milwaukee_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_milwaukee_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == milwaukee, sum(milwaukee_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# montgomery county
+
+montgomery_cnty_sabs_2014 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Montgomery County (2400480)/Montgomery County SABS 2013-14 - Long by Census Block Age Populations.csv")
+
+montgomery_cnty_census_count <- count(montgomery_cnty_sabs_2014, GISJOIN)
+
+montgomery_cnty_sabs_2014 <- montgomery_cnty_sabs_2014 |>
+  left_join(montgomery_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_montgomery_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# new orleans
+
+nola_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/New Orleans (2201170)/New Orleans SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+nola_census_count <- count(nola_sabs_2014, GISJOIN)
+
+nola_sabs_2014 <- nola_sabs_2014 |>
+  left_join(nola_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_nola_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == nola, sum(nola_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == nola, sum(nola_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# orange county
+
+orange_cnty_sabs_2014 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Orange County (1201440)/Orange County SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+orange_cnty_census_count <- count(orange_cnty_sabs_2014, GISJOIN)
+
+orange_cnty_sabs_2014 <- orange_cnty_sabs_2014 |>
+  left_join(orange_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_orange_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# palm beach
+palm_beach_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Palm Beach (1201500)/Palm Beach SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+palm_beach_census_count <- count(palm_beach_sabs_2014, GISJOIN)
+
+palm_beach_sabs_2014 <- palm_beach_sabs_2014 |>
+  left_join(palm_beach_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_palm_beach_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+# philadelphia
+
+philly_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Philadelphia (4218990)/Philadelphia SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+philly_census_count <- count(philly_sabs_2014, GISJOIN)
+
+philly_sabs_2014 <- philly_sabs_2014 |>
+  left_join(philly_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_philly_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == philly, sum(philly_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == philly, sum(philly_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# pinellas
+pinellas_cnty_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Pinellas (1201560)/Pinellas County SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+pinellas_cnty_census_count <- count(pinellas_cnty_sabs_2014, GISJOIN)
+
+pinellas_cnty_sabs_2014 <- pinellas_cnty_sabs_2014 |>
+  left_join(pinellas_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_pinellas_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# prince george's county
+
+prince_georges_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Prince George's County (2400510)/Prince George's County SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+prince_georges_census_count <- count(prince_georges_sabs_2014, GISJOIN)
+
+prince_georges_sabs_2014 <- prince_georges_sabs_2014 |>
+  left_join(prince_georges_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_prince_georges_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+
+# san diego
+
+san_diego_sabs_2014 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/San Diego (0634320)/San Diego SABS Intersections 2013-14 - Long by Census Block Age Populations.csv")
+
+
+san_diego_census_count <- count(san_diego_sabs_2014, GISJOIN)
+
+san_diego_sabs_2014 <- san_diego_sabs_2014 |>
+  left_join(san_diego_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_san_diego_2014),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2014 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2014$sab_schools_per_child), avg_sch_ops_2014),
+         avg_neighborhood_sch_ops_2014 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2014$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2014))
+```
+
+## 2015-16 DATA
+
+```{r}
+# add column to original dataset (with all analysis districts' names and lea ids) to hold their avg school options for this year
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = NA,
+         avg_sch_ops_2016 = as.numeric(avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = NA,
+         avg_neighborhood_sch_ops_2016 = as.numeric(avg_neighborhood_sch_ops_2016))
+
+#baltimore county
+baltimore_cnty_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Baltimore County (2400120)/Baltimore County SABS Intersections 15-16 - Long by Census Block Age Populations.csv")
+
+baltimore_cnty_census_count <- count(baltimore_cnty_sabs_2016, GISJOIN)
+
+baltimore_cnty_sabs_2016 <- baltimore_cnty_sabs_2016 |>
+  left_join(baltimore_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_baltimore_cnty_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == baltimore_cnty, sum(baltimore_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# broward county
+broward_cnty_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Broward County (1200180)/Broward County SABS Intersections 15-16 - Long by Census Block Age Populations.csv")
+
+broward_cnty_census_count <- count(broward_cnty_sabs_2016, GISJOIN)
+
+broward_cnty_sabs_2016 <- broward_cnty_sabs_2016 |>
+  left_join(broward_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_broward_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == broward, sum(broward_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+
+# chicago
+
+chicago_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Chicago (1709930)/Chicago SABS Intersections 15-16 - Long by Census Block Age Populations.csv")
+
+chicago_census_count <- count(chicago_sabs_2016, GISJOIN)
+
+chicago_sabs_2016 <- chicago_sabs_2016 |>
+  left_join(chicago_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_chicago_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == chicago, sum(chicago_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == chicago, sum(chicago_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# clark county
+
+clark_cnty_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Clark County (3200060)/Clark County SABS Interactions 15-16 - Long by Census Block Age Populations.csv")
+
+clark_cnty_census_count <- count(clark_cnty_sabs_2016, GISJOIN)
+
+clark_cnty_sabs_2016 <- clark_cnty_sabs_2016 |>
+  left_join(clark_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_clark_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == clark, sum(clark_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# dallas
+
+dallas_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Dallas (4816230)/Dallas SABS Interactions 15-16 - Long by Census Block Age Populations.csv")
+
+dallas_census_count <- count(dallas_sabs_2016, GISJOIN)
+
+dallas_sabs_2016 <- dallas_sabs_2016 |>
+  left_join(dallas_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dallas_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == dallas, sum(dallas_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == dallas, sum(dallas_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# dc
+
+dc_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/DC (​​1100030)/DC SABS Intersections 15-16 - Long by Census Block Age Populations.csv")
+
+dc_census_count <- count(dc_sabs_2016, GISJOIN)
+
+dc_sabs_2016 <- dc_sabs_2016 |>
+  left_join(dc_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_dc_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == dc, sum(dc_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == dc, sum(dc_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# duval county
+
+duval_cnty_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Duval (1200480)/Duval County SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+duval_cnty_census_count <- count(duval_cnty_sabs_2016, GISJOIN)
+
+duval_cnty_sabs_2016 <- duval_cnty_sabs_2016 |>
+  left_join(duval_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_duval_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == duval, sum(duval_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# fairfax county
+
+fairfax_cnty_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Fairfax County (5101260)/Fairfax County SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+fairfax_cnty_census_count <- count(fairfax_cnty_sabs_2016, GISJOIN)
+
+fairfax_cnty_sabs_2016 <- fairfax_cnty_sabs_2016 |>
+  left_join(fairfax_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_fairfax_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == fairfax, sum(fairfax_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# los angeles
+
+la_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/LA (0622710)/Los Angeles SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+la_census_count <- count(la_sabs_2016, GISJOIN)
+
+la_sabs_2016 <- la_sabs_2016 |>
+  left_join(la_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_la_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == la, sum(la_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == la, sum(la_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# miami-dade
+
+miami_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Miami-Dade (1200390)/Miami-Dade SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+miami_census_count <- count(miami_sabs_2016, GISJOIN)
+
+miami_sabs_2016 <- miami_sabs_2016 |>
+  left_join(miami_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_miami_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == miami, sum(miami_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == miami, sum(miami_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+
+# montgomery county
+
+montgomery_cnty_sabs_2016 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Montgomery County (2400480)/Montgomery County SABS 2015-16 - Long by Census Block Age Populations.csv")
+
+montgomery_cnty_census_count <- count(montgomery_cnty_sabs_2016, GISJOIN)
+
+montgomery_cnty_sabs_2016 <- montgomery_cnty_sabs_2016 |>
+  left_join(montgomery_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_montgomery_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == montgomery, sum(montgomery_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# new orleans
+
+nola_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/New Orleans (2201170)/New Orleans SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+nola_census_count <- count(nola_sabs_2016, GISJOIN)
+
+nola_sabs_2016 <- nola_sabs_2016 |>
+  left_join(nola_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_nola_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == nola, sum(nola_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == nola, sum(nola_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# orange county
+
+orange_cnty_sabs_2016 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Orange County (1201440)/Orange County SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+orange_cnty_census_count <- count(orange_cnty_sabs_2016, GISJOIN)
+
+orange_cnty_sabs_2016 <- orange_cnty_sabs_2016 |>
+  left_join(orange_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_orange_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == orange, sum(orange_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# palm beach
+palm_beach_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Palm Beach (1201500)/Palm Beach SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+palm_beach_census_count <- count(palm_beach_sabs_2016, GISJOIN)
+
+palm_beach_sabs_2016 <- palm_beach_sabs_2016 |>
+  left_join(palm_beach_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_palm_beach_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == palm_beach, sum(palm_beach_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# philadelphia
+
+philly_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Philadelphia (4218990)/Philadelphia SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+
+philly_census_count <- count(philly_sabs_2016, GISJOIN)
+
+philly_sabs_2016 <- philly_sabs_2016 |>
+  left_join(philly_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_philly_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == philly, sum(philly_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == philly, sum(philly_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+
+# pinellas
+pinellas_cnty_sabs_2016 <-  read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Pinellas (1201560)/Pinellas County SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+pinellas_cnty_census_count <- count(pinellas_cnty_sabs_2016, GISJOIN)
+
+pinellas_cnty_sabs_2016 <- pinellas_cnty_sabs_2016 |>
+  left_join(pinellas_cnty_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_pinellas_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == pinellas, sum(pinellas_cnty_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# prince george's county
+
+prince_georges_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Prince George's County (2400510)/Prince George's County SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+prince_georges_census_count <- count(prince_georges_sabs_2016, GISJOIN)
+
+prince_georges_sabs_2016 <- prince_georges_sabs_2016 |>
+  left_join(prince_georges_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_prince_georges_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == prince_georges, sum(prince_georges_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+
+# san diego
+
+san_diego_sabs_2016 <- read_csv("~/Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/San Diego (0634320)/San Diego SABS Intersections 2015-16 - Long by Census Block Age Populations.csv")
+
+
+san_diego_census_count <- count(san_diego_sabs_2016, GISJOIN)
+
+san_diego_sabs_2016 <- san_diego_sabs_2016 |>
+  left_join(san_diego_census_count) |>
+  rowwise() |>
+  mutate(cb_g3_pop_ = cb_g3_pop_ / n) |>
+  ungroup() |>
+  group_by(id) |>
+  summarize(sabs_school_options = mean(`school cou`),
+            pop_3_to_9 = sum(cb_g3_pop_)) |>
+  filter(pop_3_to_9 != 0) |>
+  rowwise() |>
+  mutate(citywide_options = as.numeric(n_citywide_schools_san_diego_2016),
+         total_sabs_school_options = sum(sabs_school_options, citywide_options)) |>
+  ungroup() |>
+  mutate(district_student_count = sum(pop_3_to_9)) |>
+  rowwise() |>
+  mutate(child_weight = pop_3_to_9/district_student_count,
+         sab_schools_per_child = child_weight * total_sabs_school_options,
+         neighborhood_sab_schools_per_child = child_weight * sabs_school_options)
+
+analysis_districts_plus_geoleaids <- analysis_districts_plus_geoleaids |>
+  mutate(avg_sch_ops_2016 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2016$sab_schools_per_child), avg_sch_ops_2016),
+         avg_neighborhood_sch_ops_2016 = if_else(geoleaids == san_diego, sum(san_diego_sabs_2016$neighborhood_sab_schools_per_child), avg_neighborhood_sch_ops_2016))
+```
+
+## Visualization
+
+```{r}
+
+# citywide options 
+citywide_sch_ops_long <- analysis_districts_plus_geoleaids |>
+  select(-starts_with("avg_neighborhood")) |>
+  pivot_longer(cols = starts_with("avg_sch"),
+               names_to = "year",
+               values_to = "avg_total_sch_ops") |>
+  mutate(year = str_replace(year, "avg_sch_ops_", ""),
+         year = as.numeric(year))
+
+
+ggplot(citywide_sch_ops_long, 
+       aes(x = year, y = avg_total_sch_ops, group = geolea_nm, color = geolea_nm,)) +
+  geom_point(aes(size = avg_total_sch_ops)) +
+  geom_line() +
+  theme_classic() 
+
+# only neighborhood options
+
+neighborhood_sch_ops_long <- analysis_districts_plus_geoleaids |>
+  select(-starts_with("avg_sch")) |>
+  pivot_longer(cols = starts_with("avg_neighborhood"),
+               names_to = "year",
+               values_to = "avg_neighborhood_sch_ops") |>
+  mutate(year = str_replace(year, "avg_neighborhood_sch_ops_", ""),
+         year = as.numeric(year))
+
+
+ggplot(neighborhood_sch_ops_long, 
+       aes(x = year, y = avg_neighborhood_sch_ops, group = geolea_nm, color = geolea_nm,)) +
+  geom_point(aes(size = avg_neighborhood_sch_ops)) +
+  geom_line() +
+  theme_classic() 
+
+
+```
+
+## Put estiates in dataframe for export
+
+```{r}
+
+# create dataframe with calculated average school options
+# avg_total_sch_ops = neighborhood school (i.e. schools that have a SAB) + citywide school options
+# avg_neighborhood_sch_ops = neighborhood school options (i.e. schools that have a SAB)
+# avg_citywide_sch_ops = total school options minus the number of neighborhood school options available
+
+avg_school_ops <- full_join(citywide_sch_ops_long, neighborhood_sch_ops_long, by = c("geoleaids", "year", "geolea_nm")) |>
+  rowwise() |>
+  mutate(avg_citywide_sch_ops = avg_total_sch_ops - avg_neighborhood_sch_ops)
+
+write_xlsx(avg_school_ops, "~Dropbox/segregation lab/SABS/Data/4. Districts - 3rd Grade/Estimates of Average Number of School Options - Sample Districts.xlsx")
+```
